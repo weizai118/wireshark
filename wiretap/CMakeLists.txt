@@ -7,13 +7,12 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 #
 
-include(UseABICheck)
-
 set(WIRETAP_PUBLIC_HEADERS
 	file_wrappers.h
 	merge.h
 	pcap-encap.h
 	pcapng_module.h
+	secrets-types.h
 	wtap.h
 	wtap_opttypes.h
 )
@@ -26,6 +25,7 @@ set(WIRETAP_NONGENERATED_FILES
 	ber.c
 	btsnoop.c
 	camins.c
+	candump.c
 	capsa.c
 	catapult_dct2000.c
 	commview.c
@@ -48,6 +48,7 @@ set(WIRETAP_NONGENERATED_FILES
 	k12.c
 	lanalyzer.c
 	libpcap.c
+	log3gpp.c
 	logcat.c
 	logcat_text.c
 	merge.c
@@ -68,12 +69,13 @@ set(WIRETAP_NONGENERATED_FILES
 	pcapng.c
 	peekclassic.c
 	peektagged.c
-	pem.c
+	rfc7468.c
 	pppdump.c
 	radcom.c
 	ruby_marshal.c
 	snoop.c
 	stanag4607.c
+	systemd_journal.c
 	tnef.c
 	toshiba.c
 	visual.c
@@ -81,18 +83,22 @@ set(WIRETAP_NONGENERATED_FILES
 	vwr.c
 	wtap.c
 	wtap_opttypes.c
-	${CMAKE_SOURCE_DIR}/version_info.c
 )
 
 set(WIRETAP_FILES ${WIRETAP_NONGENERATED_FILES})
 
 add_lex_files(LEX_FILES WIRETAP_FILES
 	ascend_scanner.l
+	candump_scanner.l
 	k12text.l
 )
 
 add_yacc_files(YACC_FILES WIRETAP_FILES
 	ascend.y
+)
+
+add_lemon_files(LEMON_FILES WIRETAP_FILES
+	candump_parser.lemon
 )
 
 #
@@ -104,19 +110,10 @@ set_source_files_properties(
 	COMPILE_FLAGS "${WERROR_COMMON_FLAGS}"
 )
 
-set(wiretap_LIBS
-	${GLIB2_LIBRARIES}
-	${GMODULE2_LIBRARIES}
-	${ZLIB_LIBRARIES}
-	wsutil
-)
-
 add_library(wiretap
 	${WIRETAP_FILES}
 	${CMAKE_BINARY_DIR}/image/wiretap.rc
 )
-
-add_dependencies(wiretap version)
 
 set_target_properties(wiretap PROPERTIES
 	PREFIX "lib"
@@ -124,47 +121,40 @@ set_target_properties(wiretap PROPERTIES
 	LINK_FLAGS "${WS_LINK_FLAGS}"
 	VERSION "0.0.0" SOVERSION 0
 	FOLDER "DLLs"
+	INSTALL_RPATH "${LIBRARY_INSTALL_RPATH}"
 )
 
-if(ENABLE_APPLICATION_BUNDLE)
-	set_target_properties(wiretap PROPERTIES
-		LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/run/Wireshark.app/Contents/Frameworks
-	)
-endif()
+target_link_libraries(wiretap
+	PUBLIC
+		wsutil
+		${GLIB2_LIBRARIES}
+	PRIVATE
+		${ZLIB_LIBRARIES}
+)
 
-ABICHECK(libwiretap)
-
-add_custom_command(OUTPUT libwiretap.abi.tar.gz
-	COMMAND ${CMAKE_COMMAND} -E remove_directory ${ABICHECK_TMPDIR}
-	COMMAND ${CMAKE_COMMAND} -E make_directory ${ABICHECK_TMPDIR}
-	COMMAND ${ABI_COPY_COMMAND} ../config.h ${ABICHECK_TMPDIR}/ ${ABI_COPY_FLAGS}
-	COMMAND ${ABI_COPY_COMMAND} ${ABICHECK_HEADERS} ${ABICHECK_TMPDIR}/ ${ABI_COPY_FLAGS}
-	COMMAND ${ABICHECK_COMMAND}
-	COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/abi_dumps/libwiretap/libwiretap_* ${CMAKE_CURRENT_BINARY_DIR}/libwiretap.abi.tar.gz
-	COMMAND rm -rf ${ABICHECK_TMPDIR} ${CMAKE_CURRENT_BINARY_DIR}/abi_dumps
-	DEPENDS ${HEADERS} wiretap)
-
-target_link_libraries(wiretap ${wiretap_LIBS})
+target_include_directories(wiretap SYSTEM
+	PRIVATE
+		${ZLIB_INCLUDE_DIRS}
+)
 
 install(TARGETS wiretap
+	EXPORT WiresharkTargets
+	RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-	RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}
 	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
-if(NOT WIN32)
-	install(FILES ${WIRETAP_PUBLIC_HEADERS}
-		DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${CPACK_PACKAGE_NAME}/wiretap"
-	)
-endif()
+install(FILES ${WIRETAP_PUBLIC_HEADERS}
+	DESTINATION "${PROJECT_INSTALL_INCLUDEDIR}/wiretap"
+)
 
 CHECKAPI(
 	NAME
 	  wiretap
 	SWITCHES
-## 'abort' checking disabled for now pending resolution of existing use of g_assert & g_error
-##	  -g abort -g termoutput
-	  -g termoutput -build
+	  --group abort:11 --summary-group abort
+	  --group termoutput:1 --summary-group termoutput
+	  --build
 	SOURCES
 	  ${WIRETAP_NONGENERATED_FILES}
 # LEX files commented out due to use of malloc, free etc.
@@ -173,7 +163,7 @@ CHECKAPI(
 )
 
 #
-# Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+# Editor modelines  -  https://www.wireshark.org/tools/modelines.html
 #
 # Local variables:
 # c-basic-offset: 8

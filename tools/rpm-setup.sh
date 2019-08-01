@@ -40,24 +40,17 @@ done
 
 BASIC_LIST="cmake \
 	gcc \
+	gcc-c++ \
 	flex \
 	bison \
-	python \
 	perl \
-	lua-devel \
-	lua \
 	desktop-file-utils \
-	fop \
-	asciidoc \
 	git \
-	git-review \
 	glib2-devel \
 	libpcap-devel \
 	zlib-devel"
 
 ADDITIONAL_LIST="libnl3-devel \
-	libnghttp2-devel \
-	libcap \
 	libcap-devel \
 	libgcrypt-devel \
 	libssh-devel \
@@ -66,17 +59,20 @@ ADDITIONAL_LIST="libnl3-devel \
 	sbc-devel \
 	libsmi-devel \
 	snappy-devel \
+	minizip-devel \
 	lz4 \
-	json-glib-devel \
-	ninja-build \
 	doxygen \
 	libxml2-devel \
-	spandsp-devel"
+	spandsp-devel \
+	systemd-devel \
+	rpm-build"
 
 # Guess which package manager we will use
-PM=`which zypper 2> /dev/null ||
-which dnf 2> /dev/null ||
-which yum 2> /dev/null`
+for PM in zypper dnf yum ''; do
+	if type "$PM" >/dev/null 2>&1; then
+		break
+	fi
+done
 
 if [ -z $PM ]
 then
@@ -85,13 +81,14 @@ then
 fi
 
 case $PM in
-	*/zypper)
+	zypper)
+		PM_OPT="--non-interactive"
 		PM_SEARCH="search -x --provides"
 		;;
-	*/dnf)
+	dnf)
 		PM_SEARCH="info"
 		;;
-	*/yum)
+	yum)
 		PM_SEARCH="info"
 		;;
 esac
@@ -109,8 +106,38 @@ add_package() {
 	eval "${list}=\"\${${list}} \${pkgname}\""
 }
 
+# Adds packages $2-$n to list variable $1 if all the packages are found
+add_packages() {
+	local list="$1" pkgnames="${@:2}"
+
+	# fail if any package is not known
+	for pkgname in $pkgnames; do
+		$PM $PM_SEARCH "$pkgname" &> /dev/null || return 1
+	done
+
+	# all packages are found, append it to list
+	eval "${list}=\"\${${list}} \${pkgnames}\""
+}
+
+# python3: OpenSUSE 43.3, Fedora 26
+# python34: Centos 7
+add_package BASIC_LIST python3 || add_package BASIC_LIST python34 ||
+echo "python3 is unavailable" >&2
+
+add_package BASIC_LIST cmake3 || add_package BASIC_LIST cmake ||
+echo "cmake is unavailable" >&2
+
 add_package BASIC_LIST glib2 || add_package BASIC_LIST libglib-2_0-0 ||
 echo "glib2 is unavailable" >&2
+
+# lua51, lua51-devel: OpenSUSE Leap 42.3 (lua would be fine too, as it installs lua52), OpenSUSE Leap 15.0 (lua installs lua53, so it wouldn't work)
+# compat-lua, compat-lua-devel: Fedora 28, Fedora 29
+# lua, lua-devel: CentOS 7
+add_package BASIC_LIST lua51-devel || add_package BASIC_LIST compat-lua-devel || add_package BASIC_LIST lua-devel ||
+echo "lua devel is unavailable" >&2
+
+add_package BASIC_LIST lua51 || add_package BASIC_LIST compat-lua || add_package BASIC_LIST lua ||
+echo "lua is unavailable" >&2
 
 add_package BASIC_LIST libpcap || add_package BASIC_LIST libpcap1 ||
 echo "libpcap is unavailable" >&2
@@ -139,10 +166,19 @@ echo "Qt5 multimedia is unavailable" >&2
 add_package BASIC_LIST libQt5PrintSupport-devel ||
 echo "Qt5 print support is unavailable" >&2
 
+# This in only required (and available) on OpenSUSE
+add_package BASIC_LIST update-desktop-files ||
+echo "update-desktop-files is unavailable" >&2
+
 add_package BASIC_LIST perl-podlators ||
 echo "perl-podlators unavailable" >&2
 
-add_package ADDITIONAL_LIST nghttp2 || add_package ADDITIONAL_LIST libnghttp2 ||
+# libcap: CentOS 7, Fedora 28, Fedora 29
+# libcap2: OpenSUSE Leap 42.3, OpenSUSE Leap 15.0
+add_package ADDITIONAL_LIST libcap || add_package ADDITIONAL_LIST libcap2 ||
+echo "libcap is unavailable" >&2
+
+add_package ADDITIONAL_LIST nghttp2-devel || add_package ADDITIONAL_LIST libnghttp2-devel ||
 echo "nghttp2 is unavailable" >&2
 
 add_package ADDITIONAL_LIST snappy || add_package ADDITIONAL_LIST libsnappy1 ||
@@ -168,6 +204,21 @@ echo "perl-Pod-Html is unavailable" >&2
 add_package ADDITIONAL_LIST asciidoctor || add_package ADDITIONAL_LIST rubygem-asciidoctor.noarch ||
 echo "asciidoctor is unavailable" >&2
 
+add_package ADDITIONAL_LIST ninja || add_package ADDITIONAL_LIST ninja-build ||
+echo "ninja is unavailable" >&2
+
+add_package ADDITIONAL_LIST libxslt || add_package ADDITIONAL_LIST libxslt1 ||
+echo "xslt is unavailable" >&2
+
+add_package ADDITIONAL_LIST brotli-devel || add_packages ADDITIONAL_LIST libbrotli-devel libbrotlidec1 ||
+echo "brotli is unavailable" >&2
+
+add_package ADDITIONAL_LIST git-review ||
+echo "git-review is unavailabe" >&2
+
+add_package ADDITIONAL_LIST speexdsp-devel || add_package ADDITIONAL_LIST speex-devel ||
+echo "speex is unavailable" >&2
+
 ACTUAL_LIST=$BASIC_LIST
 
 # Now arrange for optional support libraries
@@ -176,7 +227,7 @@ then
 	ACTUAL_LIST="$ACTUAL_LIST $ADDITIONAL_LIST"
 fi
 
-$PM install $ACTUAL_LIST $OPTIONS
+$PM $PM_OPT install $ACTUAL_LIST $OPTIONS
 
 # Now arrange for optional support libraries
 if [ ! $ADDITIONAL ]

@@ -133,6 +133,7 @@ const char* PrefsModel::FONT_AND_COLORS_PREFERENCE_TREE_NAME = QT_TR_NOOP("Font 
 const char* PrefsModel::CAPTURE_PREFERENCE_TREE_NAME = QT_TR_NOOP("Capture");
 const char* PrefsModel::EXPERT_PREFERENCE_TREE_NAME = QT_TR_NOOP("Expert");
 const char* PrefsModel::FILTER_BUTTONS_PREFERENCE_TREE_NAME = QT_TR_NOOP("Filter Buttons");
+const char* PrefsModel::RSA_KEYS_PREFERENCE_TREE_NAME = QT_TR_NOOP("RSA Keys");
 
 
 PrefsModel::PrefsModel(QObject *parent) :
@@ -292,11 +293,6 @@ fill_prefs(module_t *module, gpointer root_ptr)
 
 void PrefsModel::populate()
 {
-    // Printing prefs don't apply here.
-    module_t *print_module = prefs_find_module("print");
-    if (print_module)
-        print_module->use_gui = FALSE;
-
     //Since "expert" is really a pseudo protocol, it shouldn't be
     //categorized with other "real" protocols when it comes to
     //preferences.  Since it's just a UAT, don't bury it in
@@ -326,6 +322,10 @@ void PrefsModel::populate()
     root_->prependChild(special_item);
     special_item = new PrefsItem(FILTER_BUTTONS_PREFERENCE_TREE_NAME, root_);
     root_->prependChild(special_item);
+#ifdef HAVE_LIBGNUTLS
+    special_item = new PrefsItem(RSA_KEYS_PREFERENCE_TREE_NAME, root_);
+    root_->prependChild(special_item);
+#endif
     special_item = new PrefsItem(ADVANCED_PREFERENCE_TREE_NAME, root_);
     root_->prependChild(special_item);
 }
@@ -513,6 +513,9 @@ bool AdvancedPrefsModel::setData(const QModelIndex &dataindex, const QVariant &v
             prefs_set_color_value(item->getPref(), color, pref_stashed);
             break;
         }
+        case PREF_CUSTOM:
+            prefs_set_custom_value(item->getPref(), value.toString().toStdString().c_str(), pref_stashed);
+            break;
         }
     }
 
@@ -565,7 +568,7 @@ void AdvancedPrefsModel::setFirstColumnSpanned(QTreeView* tree, const QModelInde
             if (childCount > 0) {
                 tree->setFirstColumnSpanned(mIndex.row(), mIndex.parent(), true);
                 for (row = 0; row < childCount; row++) {
-                    setFirstColumnSpanned(tree, mIndex.child(row, 0));
+                    setFirstColumnSpanned(tree, index(row, 0, mIndex));
                 }
             }
         }

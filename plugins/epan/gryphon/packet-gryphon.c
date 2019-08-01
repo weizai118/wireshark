@@ -25,7 +25,7 @@
 /*
  * See
  *
- *     http://www.dgtech.com/gryphon/sys/www/docs/html/
+ *     https://www.dgtech.com/product/gryphon/manual/html/GCprotocol/
  */
 
 void proto_register_gryphon(void);
@@ -1303,7 +1303,7 @@ decode_command(tvbuff_t *tvb, int msglen, int offset, int dst, proto_tree *pt)
 
     cmd = tvb_get_guint8(tvb, offset);
     hi = proto_tree_add_uint(pt, hf_gryphon_cmd, tvb, offset, 1, cmd);
-    PROTO_ITEM_SET_HIDDEN(hi);
+    proto_item_set_hidden(hi);
 
     if (cmd > 0x3F)
         cmd += dst * 256;
@@ -5137,7 +5137,7 @@ proto_reg_handoff_gryphon(void)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 4

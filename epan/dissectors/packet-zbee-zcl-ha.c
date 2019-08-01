@@ -525,9 +525,15 @@ proto_register_zbee_zcl_met_idt(void)
 
     };
 
+    /* ZCL Meter Identification subtrees */
+    gint *ett[] = {
+        &ett_zbee_zcl_met_idt
+    };
+
     /* Register the ZigBee ZCL Meter Identification cluster protocol name and description */
     proto_zbee_zcl_met_idt = proto_register_protocol("ZigBee ZCL Meter Identification", "ZCL Meter Identification", ZBEE_PROTOABBREV_ZCL_METIDT);
     proto_register_field_array(proto_zbee_zcl_met_idt, hf, array_length(hf));
+    proto_register_subtree_array(ett, array_length(ett));
 
     /* Register the ZigBee ZCL Meter Identification dissector. */
     register_dissector(ZBEE_PROTOABBREV_ZCL_METIDT, dissect_zbee_zcl_met_idt, proto_zbee_zcl_met_idt);
@@ -1284,7 +1290,7 @@ proto_reg_handoff_zbee_zcl_appl_stats(void)
 } /*proto_reg_handoff_zbee_zcl_appl_stats*/
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 4

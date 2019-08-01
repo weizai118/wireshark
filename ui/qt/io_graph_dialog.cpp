@@ -29,6 +29,7 @@
 #include <wsutil/report_message.h>
 
 #include <ui/qt/utils/tango_colors.h> //provides some default colors
+#include <ui/qt/widgets/copy_from_profile_menu.h>
 #include "ui/qt/widgets/wireshark_file_dialog.h"
 
 #include <QClipboard>
@@ -46,7 +47,7 @@
 // Bugs and uncertainties:
 // - Regular (non-stacked) bar graphs are drawn on top of each other on the Z axis.
 //   The QCP forum suggests drawing them side by side:
-//   http://www.qcustomplot.com/index.php/support/forum/62
+//   https://www.qcustomplot.com/index.php/support/forum/62
 // - We retap and redraw more than we should.
 // - Smoothing doesn't seem to match GTK+
 // - Closing the color picker on macOS sends the dialog to the background.
@@ -303,15 +304,34 @@ IOGraphDialog::IOGraphDialog(QWidget &parent, CaptureFile &cf) :
     ui->setupUi(this);
     loadGeometry();
 
-    setWindowSubtitle(tr("IO Graphs"));
+    setWindowSubtitle(tr("I/O Graphs"));
     setAttribute(Qt::WA_DeleteOnClose, true);
     QCustomPlot *iop = ui->ioPlot;
+
+    ui->newToolButton->setStockIcon("list-add");
+    ui->deleteToolButton->setStockIcon("list-remove");
+    ui->copyToolButton->setStockIcon("list-copy");
+    ui->clearToolButton->setStockIcon("list-clear");
+
+#ifdef Q_OS_MAC
+    ui->newToolButton->setAttribute(Qt::WA_MacSmallSize, true);
+    ui->deleteToolButton->setAttribute(Qt::WA_MacSmallSize, true);
+    ui->copyToolButton->setAttribute(Qt::WA_MacSmallSize, true);
+    ui->clearToolButton->setAttribute(Qt::WA_MacSmallSize, true);
+#endif
 
     QPushButton *save_bt = ui->buttonBox->button(QDialogButtonBox::Save);
     save_bt->setText(tr("Save As" UTF8_HORIZONTAL_ELLIPSIS));
 
     QPushButton *copy_bt = ui->buttonBox->addButton(tr("Copy"), QDialogButtonBox::ActionRole);
     connect (copy_bt, SIGNAL(clicked()), this, SLOT(copyAsCsvClicked()));
+
+    QPushButton *copy_from_bt = ui->buttonBox->addButton(tr("Copy from"), QDialogButtonBox::ActionRole);
+    CopyFromProfileMenu *copy_from_menu = new CopyFromProfileMenu("io_graphs", copy_from_bt);
+    copy_from_bt->setMenu(copy_from_menu);
+    copy_from_bt->setToolTip(tr("Copy graphs from another profile."));
+    copy_from_bt->setEnabled(copy_from_menu->haveProfiles());
+    connect(copy_from_menu, SIGNAL(triggered(QAction *)), this, SLOT(copyFromProfile(QAction *)));
 
     QPushButton *close_bt = ui->buttonBox->button(QDialogButtonBox::Close);
     if (close_bt) {
@@ -324,13 +344,14 @@ IOGraphDialog::IOGraphDialog(QWidget &parent, CaptureFile &cf) :
 
     // Intervals (ms)
     ui->intervalComboBox->addItem(tr("1 ms"),        1);
+    ui->intervalComboBox->addItem(tr("5 ms"),        5);
     ui->intervalComboBox->addItem(tr("10 ms"),      10);
     ui->intervalComboBox->addItem(tr("100 ms"),    100);
     ui->intervalComboBox->addItem(tr("1 sec"),    1000);
     ui->intervalComboBox->addItem(tr("10 sec"),  10000);
     ui->intervalComboBox->addItem(tr("1 min"),   60000);
     ui->intervalComboBox->addItem(tr("10 min"), 600000);
-    ui->intervalComboBox->setCurrentIndex(3);
+    ui->intervalComboBox->setCurrentIndex(4);
 
     ui->todCheckBox->setChecked(false);
 
@@ -367,7 +388,7 @@ IOGraphDialog::IOGraphDialog(QWidget &parent, CaptureFile &cf) :
     QCPPlotTitle *title = new QCPPlotTitle(iop);
     iop->plotLayout()->insertRow(0);
     iop->plotLayout()->addElement(0, 0, title);
-    title->setText(tr("Wireshark IO Graphs: %1").arg(cap_file_.fileTitle()));
+    title->setText(tr("Wireshark I/O Graphs: %1").arg(cap_file_.fileDisplayName()));
 
     tracer_ = new QCPItemTracer(iop);
     iop->addItem(tracer_);
@@ -387,6 +408,8 @@ IOGraphDialog::IOGraphDialog(QWidget &parent, CaptureFile &cf) :
 
     iop->rescaleAxes();
 
+    ui->clearToolButton->setEnabled(uat_model_->rowCount() != 0);
+
     //XXX - resize columns?
 
     ProgressFrame::addToButtonBox(ui->buttonBox, &parent);
@@ -405,6 +428,24 @@ IOGraphDialog::~IOGraphDialog()
     }
     delete ui;
     ui = NULL;
+}
+
+void IOGraphDialog::copyFromProfile(QAction *action)
+{
+    QString filename = action->data().toString();
+    guint orig_data_len = iog_uat_->raw_data->len;
+
+    gchar *err = NULL;
+    if (uat_load(iog_uat_, filename.toUtf8().constData(), &err)) {
+        iog_uat_->changed = TRUE;
+        uat_model_->reloadUat();
+        for (guint i = orig_data_len; i < iog_uat_->raw_data->len; i++) {
+            createIOGraph(i);
+        }
+    } else {
+        report_failure("Error while loading %s: %s", iog_uat_->name, err);
+        g_free(err);
+    }
 }
 
 void IOGraphDialog::addGraph(bool checked, QString name, QString dfilter, int color_idx, IOGraph::PlotStyles style, io_graph_item_unit_t value_units, QString yfield, int moving_average)
@@ -446,9 +487,8 @@ void IOGraphDialog::addGraph(bool copy_from_current)
             return;
         }
         const QModelIndex &new_index = uat_model_->index(uat_model_->rowCount() - 1, 0);
-        if (copy_from_current) {
-            uat_model_->copyRow(new_index.row(), current.row());
-        }
+        uat_model_->copyRow(new_index.row(), current.row());
+        createIOGraph(new_index.row());
 
         ui->graphUat->setCurrentIndex(new_index);
     } else {
@@ -656,20 +696,15 @@ void IOGraphDialog::keyPressEvent(QKeyEvent *event)
 
 void IOGraphDialog::reject()
 {
-    if (!iog_uat_)
+    if (!uat_model_)
         return;
 
-    //There is no "rejection" of the UAT created.  Just save what we have
-    if (iog_uat_->changed) {
-        gchar *err = NULL;
-
-        if (!uat_save(iog_uat_, &err)) {
-            report_failure("Error while saving %s: %s", iog_uat_->name, err);
-            g_free(err);
-        }
-
-        if (iog_uat_->post_update_cb) {
-            iog_uat_->post_update_cb();
+    // Changes to the I/O Graph settings are always saved,
+    // there is no possibility for "rejection".
+    QString error;
+    if (uat_model_->applyChanges(error)) {
+        if (!error.isEmpty()) {
+            report_failure("%s", qPrintable(error));
         }
     }
 
@@ -876,7 +911,7 @@ void IOGraphDialog::updateLegend()
     }
 
     // Differing labels. Create a legend with a Title label at top.
-    // Legend Title thanks to: http://www.qcustomplot.com/index.php/support/forum/443
+    // Legend Title thanks to: https://www.qcustomplot.com/index.php/support/forum/443
     QCPStringLegendItem* legendTitle = qobject_cast<QCPStringLegendItem*>(iop->legend->elementAt(0));
     if (legendTitle == NULL) {
         legendTitle = new QCPStringLegendItem(iop->legend, QString(""));
@@ -1134,7 +1169,7 @@ void IOGraphDialog::loadProfileGraphs()
                            io_graph_fields);
 
         char* err = NULL;
-        if (!uat_load(iog_uat_, &err)) {
+        if (!uat_load(iog_uat_, NULL, &err)) {
             report_failure("Error while loading %s: %s.  Default graph values will be used", iog_uat_->name, err);
             g_free(err);
             uat_clear(iog_uat_);
@@ -1148,6 +1183,7 @@ void IOGraphDialog::loadProfileGraphs()
 
     connect(uat_model_, SIGNAL(dataChanged(QModelIndex,QModelIndex)),
             this, SLOT(modelDataChanged(QModelIndex)));
+    connect(uat_model_, SIGNAL(modelReset()), this, SLOT(modelRowsReset()));
 }
 
 // Slots
@@ -1190,14 +1226,23 @@ void IOGraphDialog::on_todCheckBox_toggled(bool checked)
     mouseMoved(NULL); // Update hint
 }
 
+void IOGraphDialog::modelRowsReset()
+{
+    ui->deleteToolButton->setEnabled(false);
+    ui->copyToolButton->setEnabled(false);
+    ui->clearToolButton->setEnabled(uat_model_->rowCount() != 0);
+}
+
 void IOGraphDialog::on_graphUat_currentItemChanged(const QModelIndex &current, const QModelIndex&)
 {
     if (current.isValid()) {
         ui->deleteToolButton->setEnabled(true);
         ui->copyToolButton->setEnabled(true);
+        ui->clearToolButton->setEnabled(true);
     } else {
         ui->deleteToolButton->setEnabled(false);
         ui->copyToolButton->setEnabled(false);
+        ui->clearToolButton->setEnabled(false);
     }
 }
 
@@ -1251,6 +1296,20 @@ void IOGraphDialog::on_deleteToolButton_clicked()
 void IOGraphDialog::on_copyToolButton_clicked()
 {
     addGraph(true);
+}
+
+void IOGraphDialog::on_clearToolButton_clicked()
+{
+    if (uat_model_) {
+        foreach(IOGraph* iog, ioGraphs_) {
+            delete iog;
+        }
+        ioGraphs_.clear();
+        uat_model_->clearAll();
+    }
+
+    hint_err_.clear();
+    mouseMoved(NULL);
 }
 
 void IOGraphDialog::on_dragRadioButton_toggled(bool checked)
@@ -1402,7 +1461,7 @@ void IOGraphDialog::on_buttonBox_accepted()
 
     QString save_file = path.canonicalPath();
     if (!file_closed_) {
-        save_file += QString("/%1").arg(cap_file_.fileTitle());
+        save_file += QString("/%1").arg(cap_file_.fileBaseName());
     }
     file_name = WiresharkFileDialog::getSaveFileName(this, wsApp->windowTitleString(tr("Save Graph As" UTF8_HORIZONTAL_ELLIPSIS)),
                                              save_file, filter, &extension);
@@ -1506,7 +1565,8 @@ IOGraph::IOGraph(QCustomPlot *parent) :
                           TL_REQUIRES_PROTO_TREE,
                           tapReset,
                           tapPacket,
-                          tapDraw);
+                          tapDraw,
+                          NULL);
     if (error_string) {
 //        QMessageBox::critical(this, tr("%1 failed to register tap listener").arg(name_),
 //                             error_string->str);
@@ -2001,11 +2061,11 @@ void IOGraph::tapReset(void *iog_ptr)
 }
 
 // "tap_packet" callback for register_tap_listener
-gboolean IOGraph::tapPacket(void *iog_ptr, packet_info *pinfo, epan_dissect_t *edt, const void *)
+tap_packet_status IOGraph::tapPacket(void *iog_ptr, packet_info *pinfo, epan_dissect_t *edt, const void *)
 {
     IOGraph *iog = static_cast<IOGraph *>(iog_ptr);
     if (!pinfo || !iog) {
-        return FALSE;
+        return TAP_PACKET_DONT_REDRAW;
     }
 
     int idx = get_io_graph_index(pinfo, iog->interval_);
@@ -2014,7 +2074,7 @@ gboolean IOGraph::tapPacket(void *iog_ptr, packet_info *pinfo, epan_dissect_t *e
     /* some sanity checks */
     if ((idx < 0) || (idx >= max_io_items_)) {
         iog->cur_idx_ = max_io_items_ - 1;
-        return FALSE;
+        return TAP_PACKET_DONT_REDRAW;
     }
 
     /* update num_items */
@@ -2038,7 +2098,7 @@ gboolean IOGraph::tapPacket(void *iog_ptr, packet_info *pinfo, epan_dissect_t *e
     }
 
     if (!update_io_graph_item(iog->items_, idx, pinfo, adv_edt, iog->hf_index_, iog->val_units_, iog->interval_)) {
-        return FALSE;
+        return TAP_PACKET_DONT_REDRAW;
     }
 
 //    qDebug() << "=tapPacket" << iog->name_ << idx << iog->hf_index_ << iog->val_units_ << iog->num_items_;
@@ -2046,7 +2106,7 @@ gboolean IOGraph::tapPacket(void *iog_ptr, packet_info *pinfo, epan_dissect_t *e
     if (recalc) {
         emit iog->requestRecalc();
     }
-    return TRUE;
+    return TAP_PACKET_REDRAW;
 }
 
 // "tap_draw" callback for register_tap_listener

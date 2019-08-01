@@ -16,7 +16,7 @@ class QListWidget;
 class QListWidgetItem;
 class QMenu;
 
-#include "splash_overlay.h"
+#include <ui/qt/widgets/splash_overlay.h>
 #include "interface_frame.h"
 
 namespace Ui {
@@ -37,6 +37,7 @@ public slots:
     void interfaceSelected();
 
 protected:
+    virtual bool event(QEvent *event);
     virtual void resizeEvent(QResizeEvent *event);
     virtual void changeEvent(QEvent* event);
 
@@ -46,6 +47,8 @@ protected slots:
     void on_helpLabel_clicked();
 
 private:
+    void updateStyleSheets();
+
     Ui::WelcomePage *welcome_ui_;
     QString flavor_;
     QString show_in_str_;
@@ -54,9 +57,6 @@ private:
     // QListWidget doesn't activate items when the return or enter keys are pressed on macOS.
     // We may want to subclass it at some point.
     QListWidget *recent_files_;
-//    MWOverlay *overlay;
-    QMenu *recent_ctx_menu_;
-
 
 signals:
     void startCapture();

@@ -43,8 +43,9 @@ SCTPAllAssocsDialog::~SCTPAllAssocsDialog()
 
 void SCTPAllAssocsDialog::fillTable()
 {
+    const sctp_allassocs_info_t *sctp_assocs;
     GList *list;
-    sctp_assoc_info_t* assinfo;
+    const sctp_assoc_info_t* assinfo;
     int numAssocs;
 
     ui->assocList->setColumnHidden(0, true);
@@ -53,8 +54,8 @@ void SCTPAllAssocsDialog::fillTable()
     ui->assocList->setColumnWidth(3,  150);
     ui->assocList->setColumnWidth(4,  150);
 
-    sctp_assocs = (sctp_allassocs_info_t*)sctp_stat_get_info();
-    if (sctp_stat_get_info()->is_registered == FALSE) {
+    sctp_assocs = sctp_stat_get_info();
+    if (sctp_assocs->is_registered == FALSE) {
         register_tap_listener_sctp_stat();
         /*  (redissect all packets) */
         cf_retap_packets(cap_file_);
@@ -65,7 +66,7 @@ void SCTPAllAssocsDialog::fillTable()
     list = g_list_first(sctp_assocs->assoc_info_list);
 
     while (list) {
-        assinfo = (sctp_assoc_info_t*)(list->data);
+        assinfo = (const sctp_assoc_info_t*)(list->data);
         ui->assocList->setItem(numAssocs, 0, new QTableWidgetItem(QString("%1").arg(assinfo->assoc_id)));
         ui->assocList->setItem(numAssocs, 1, new QTableWidgetItem(QString("%1").arg(assinfo->port1)));
         ui->assocList->setItem(numAssocs, 2, new QTableWidgetItem(QString("%1").arg(assinfo->port2)));
@@ -80,45 +81,20 @@ void SCTPAllAssocsDialog::fillTable()
     connect(ui->assocList, SIGNAL(itemSelectionChanged()), this, SLOT(getSelectedItem()));
  }
 
-sctp_assoc_info_t* SCTPAllAssocsDialog::findSelectedAssoc()
-{
-    QTableWidgetItem *selection;
-    GList *list;
-    sctp_assoc_info_t* assinfo;
-    int row, id;
-
-    selection = ui->assocList->selectedItems()[0];
-    row = selection->row();
-    selection = ui->assocList->item(row, 0);
-    id = (selection->data(0)).toInt();
-    list = g_list_first(sctp_assocs->assoc_info_list);
-
-    while (list) {
-        assinfo = (sctp_assoc_info_t*)(list->data);
-        if (assinfo->assoc_id == id) {
-            return assinfo;
-        }
-        list = g_list_next(list);
-    }
-    return NULL;
-}
-
 void SCTPAllAssocsDialog::getSelectedItem()
 {
     ui->analyseButton->setEnabled(true);
     ui->setFilterButton->setEnabled(true);
     ui->analyseButton->setFocus(Qt::OtherFocusReason);
-    selected_assoc = findSelectedAssoc();
+    selected_assoc_id = ui->assocList->item(ui->assocList->selectedItems().at(0)->row(), 0)->data(0).toInt();
 }
 
 void SCTPAllAssocsDialog::on_analyseButton_clicked()
 {
+    const sctp_assoc_info_t* selected_assoc = SCTPAssocAnalyseDialog::findAssoc(this, selected_assoc_id);
+    if (!selected_assoc) return;
 
-    if (!selected_assoc) {
-        selected_assoc = findSelectedAssoc();
-    }
-
-    SCTPAssocAnalyseDialog *sctp_analyse = new SCTPAssocAnalyseDialog(this, selected_assoc, cap_file_, this);
+    SCTPAssocAnalyseDialog *sctp_analyse = new SCTPAssocAnalyseDialog(this, selected_assoc, cap_file_);
     connect(sctp_analyse, SIGNAL(filterPackets(QString&,bool)),
             parent(), SLOT(filterPackets(QString&,bool)));
 
@@ -137,13 +113,7 @@ void SCTPAllAssocsDialog::on_analyseButton_clicked()
 
 void SCTPAllAssocsDialog::on_setFilterButton_clicked()
 {
-
-    if (!selected_assoc){
-        selected_assoc = findSelectedAssoc();
-    }
-
-    QString newFilter = QString("sctp.assoc_index==%1").arg(selected_assoc->assoc_id);
-    selected_assoc = NULL;
+    QString newFilter = QString("sctp.assoc_index==%1").arg(selected_assoc_id);
     emit filterPackets(newFilter, false);
 }
 

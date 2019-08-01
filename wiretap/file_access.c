@@ -73,34 +73,35 @@
 #include "nettrace_3gpp_32_423.h"
 #include "mplog.h"
 #include "dpa400.h"
-#include "pem.h"
+#include "rfc7468.h"
 #include "ruby_marshal.h"
+#include "systemd_journal.h"
+#include "log3gpp.h"
+#include "candump.h"
+
 
 /*
- * Add an extension, and all compressed versions thereof, to a GSList
- * of extensions.
+ * Add an extension, and all compressed versions thereof if requested,
+ * to a GSList of extensions.
  */
 static GSList *
 add_extensions(GSList *extensions, const gchar *extension,
-    const char **compressed_file_extensions)
+    GSList *compression_type_extensions)
 {
-	const char **compressed_file_extensionp;
-
 	/*
 	 * Add the specified extension.
 	 */
 	extensions = g_slist_prepend(extensions, g_strdup(extension));
 
 	/*
-	 * Now add the extensions for compressed-file versions of
-	 * that extension.
+	 * Add whatever compressed versions we were supplied.
 	 */
-	for (compressed_file_extensionp = compressed_file_extensions;
-	    *compressed_file_extensionp != NULL;
-	    compressed_file_extensionp++) {
+	for (GSList *compression_type_extension = compression_type_extensions;
+	    compression_type_extension != NULL;
+	    compression_type_extension = g_slist_next(compression_type_extension)) {
 		extensions = g_slist_prepend(extensions,
 		    g_strdup_printf("%s.%s", extension,
-		      *compressed_file_extensionp));
+		        (const char *)compression_type_extension->data));
 	}
 
 	return extensions;
@@ -113,6 +114,11 @@ add_extensions(GSList *extensions, const gchar *extension,
  * for which to filter.  Note that the first field can list more than
  * one type of file, because, for example, ".cap" is a popular
  * extension used by a number of capture file types.
+ *
+ * File types that *don't* have a file extension used for them should
+ * *not* be placed here; if there's nothing to put in the last field
+ * of the structure, don't put an entry here, not even one with an
+ * empty string for the extensions list.
  */
 static const struct file_extension_info file_type_extensions_base[] = {
 	{ "Wireshark/tcpdump/... - pcap", TRUE, "pcap;cap;dmp" },
@@ -145,7 +151,6 @@ static const struct file_extension_info file_type_extensions_base[] = {
 	{ "Transport-Neutral Encapsulation Format", FALSE, "tnef" },
 	{ "JPEG/JFIF files", FALSE, "jpg;jpeg;jfif" },
 	{ "JavaScript Object Notation file", FALSE, "json" },
-	{ "Ruby Marshal Object", FALSE, "" }
 };
 
 #define	N_FILE_TYPE_EXTENSIONS	(sizeof file_type_extensions_base / sizeof file_type_extensions_base[0])
@@ -191,8 +196,8 @@ wtap_get_file_extension_type_name(int extension_type)
 }
 
 static GSList *
-add_extensions_for_file_extensions_type(int extension_type,
-    GSList *extensions, const char **compressed_file_extensions)
+add_extensions_for_file_extensions_type(int extension_type, GSList *extensions,
+    GSList *compression_type_extensions)
 {
 	gchar **extensions_set, **extensionp, *extension;
 
@@ -213,7 +218,7 @@ add_extensions_for_file_extensions_type(int extension_type,
 		 * of it.
 		 */
 		extensions = add_extensions(extensions, extension,
-		    compressed_file_extensions);
+		    compression_type_extensions);
 	}
 
 	g_strfreev(extensions_set);
@@ -228,7 +233,7 @@ add_extensions_for_file_extensions_type(int extension_type,
 GSList *
 wtap_get_file_extension_type_extensions(guint extension_type)
 {
-	GSList *extensions;
+	GSList *extensions, *compression_type_extensions;
 
 	if (extension_type >= file_type_extensions_arr->len)
 		return NULL;	/* not a valid extension type */
@@ -236,11 +241,18 @@ wtap_get_file_extension_type_extensions(guint extension_type)
 	extensions = NULL;	/* empty list, to start with */
 
 	/*
+	 * Get compression-type extensions, if any.
+	 */
+	compression_type_extensions = wtap_get_all_compression_type_extensions_list();
+
+	/*
 	 * Add all this file extension type's extensions, with compressed
 	 * variants.
 	 */
 	extensions = add_extensions_for_file_extensions_type(extension_type,
-	    extensions, compressed_file_extension_table);
+	    extensions, compression_type_extensions);
+
+	g_slist_free(compression_type_extensions);
 
 	return extensions;
 }
@@ -264,12 +276,17 @@ wtap_get_file_extension_type_extensions(guint extension_type)
 GSList *
 wtap_get_all_capture_file_extensions_list(void)
 {
-	GSList *extensions;
+	GSList *extensions, *compression_type_extensions;
 	unsigned int i;
 
 	init_file_type_extensions();
 
 	extensions = NULL;	/* empty list, to start with */
+
+	/*
+	 * Get compression-type extensions, if any.
+	 */
+	compression_type_extensions = wtap_get_all_compression_type_extensions_list();
 
 	for (i = 0; i < file_type_extensions_arr->len; i++) {
 		/*
@@ -282,9 +299,11 @@ wtap_get_all_capture_file_extensions_list(void)
 			 * extensions, with compressed variants.
 			 */
 			extensions = add_extensions_for_file_extensions_type(i,
-			    extensions, compressed_file_extension_table);
+			    extensions, compression_type_extensions);
 		}
 	}
+
+	g_slist_free(compression_type_extensions);
 
 	return extensions;
 }
@@ -356,7 +375,7 @@ static const struct open_info open_info_base[] = {
 	{ "MIME Files Format",                      OPEN_INFO_MAGIC,     mime_file_open,           NULL,       NULL, NULL },
 	{ "Micropross mplog",                       OPEN_INFO_MAGIC,     mplog_open,               "mplog",    NULL, NULL },
 	{ "Unigraf DPA-400 capture",                OPEN_INFO_MAGIC,     dpa400_open,              "bin",      NULL, NULL },
-	{ "ASN.1 (PEM-like encoding)",              OPEN_INFO_MAGIC,     pem_open,                 "pem;crt",  NULL, NULL },
+	{ "RFC 7468 files",                         OPEN_INFO_MAGIC,     rfc7468_open,                 "pem;crt",  NULL, NULL },
 	{ "Novell LANalyzer",                       OPEN_INFO_HEURISTIC, lanalyzer_open,           "tr1",      NULL, NULL },
 	/*
 	 * PacketLogger must come before MPEG, because its files
@@ -398,6 +417,7 @@ static const struct open_info open_info_base[] = {
 	{ "NetScaler",                              OPEN_INFO_HEURISTIC, nstrace_open,             "cap",      NULL, NULL },
 	{ "Android Logcat Binary format",           OPEN_INFO_HEURISTIC, logcat_open,              "logcat",   NULL, NULL },
 	{ "Android Logcat Text formats",            OPEN_INFO_HEURISTIC, logcat_text_open,         "txt",      NULL, NULL },
+	{ "Candump log",                            OPEN_INFO_HEURISTIC, candump_open,             NULL,       NULL, NULL },
 	/* ASCII trace files from Telnet sessions. */
 	{ "Lucent/Ascend access server trace",      OPEN_INFO_HEURISTIC, ascend_open,              "txt",      NULL, NULL },
 	{ "Toshiba Compact ISDN Router snoop",      OPEN_INFO_HEURISTIC, toshiba_open,             "txt",      NULL, NULL },
@@ -405,7 +425,10 @@ static const struct open_info open_info_base[] = {
 	{ "Ixia IxVeriWave .vwr Raw Capture",       OPEN_INFO_HEURISTIC, vwr_open,                 "vwr",      NULL, NULL },
 	{ "CAM Inspector file",                     OPEN_INFO_HEURISTIC, camins_open,              "camins",   NULL, NULL },
 	{ "JavaScript Object Notation",             OPEN_INFO_HEURISTIC, json_open,                "json",     NULL, NULL },
-	{ "Ruby Marshal Object",                    OPEN_INFO_HEURISTIC, ruby_marshal_open,        "",      NULL, NULL }
+	{ "Ruby Marshal Object",                    OPEN_INFO_HEURISTIC, ruby_marshal_open,        "",         NULL, NULL },
+	{ "Systemd Journal",                        OPEN_INFO_HEURISTIC, systemd_journal_open,     "log;jnl;journal",      NULL, NULL },
+	{ "3gpp phone log",                         OPEN_INFO_MAGIC,     log3gpp_open,             "log",      NULL, NULL },
+
 };
 
 /* this is only used to build the dynamic array on load, do NOT use this
@@ -596,7 +619,6 @@ get_file_extension(const char *pathname)
 	gchar *filename;
 	gchar **components;
 	size_t ncomponents;
-	const char **compressed_file_extensionp;
 	gchar *extensionp;
 
 	/*
@@ -640,19 +662,25 @@ get_file_extension(const char *pathname)
 	}
 
 	/*
+	 * Get compression-type extensions, if any.
+	 */
+	GSList *compression_type_extensions = wtap_get_all_compression_type_extensions_list();
+
+	/*
 	 * Is the last component one of the extensions used for compressed
 	 * files?
 	 */
 	extensionp = components[ncomponents - 1];
-	for (compressed_file_extensionp = compressed_file_extension_table;
-	    *compressed_file_extensionp != NULL;
-	    compressed_file_extensionp++) {
-		if (strcmp(extensionp, *compressed_file_extensionp) == 0) {
+	for (GSList *compression_type_extension = compression_type_extensions;
+	    compression_type_extension != NULL;
+	    compression_type_extension = g_slist_next(compression_type_extension)) {
+		if (strcmp(extensionp, (const char *)compression_type_extension->data) == 0) {
 			/*
-			 * Yes, it's one of the compressed-file extensions.
+			 * Yes, so it's one of the compressed-file extensions.
 			 * Is there an extension before that?
 			 */
 			if (ncomponents == 2) {
+				g_slist_free(compression_type_extensions);
 				g_strfreev(components);
 				return NULL;	/* no, only two components */
 			}
@@ -660,11 +688,14 @@ get_file_extension(const char *pathname)
 			/*
 			 * Yes, return that extension.
 			 */
+			g_slist_free(compression_type_extensions);
 			extensionp = g_strdup(components[ncomponents - 2]);
 			g_strfreev(components);
 			return extensionp;
 		}
 	}
+
+	g_slist_free(compression_type_extensions);
 
 	/*
 	 * The extension isn't one of the compressed-file extensions;
@@ -1103,9 +1134,6 @@ fail:
 	return NULL;
 
 success:
-	wth->rec_data = (struct Buffer *)g_malloc(sizeof(struct Buffer));
-	ws_buffer_init(wth->rec_data, 1500);
-
 	if ((wth->file_type_subtype == WTAP_FILE_TYPE_SUBTYPE_PCAP) ||
 		(wth->file_type_subtype == WTAP_FILE_TYPE_SUBTYPE_PCAP_NSEC)) {
 
@@ -1617,9 +1645,24 @@ static const struct file_type_subtype_info dump_open_table_base[] = {
 	  FALSE, FALSE, 0,
 	  NULL, NULL, NULL },
 
-	/* WTAP_FILE_TYPE_SUBTYPE_PEM */
-	{ "ASN.1 (PEM-like encoding)", "pem", NULL, NULL,
+	/* WTAP_FILE_TYPE_SUBTYPE_RFC7468 */
+	{ "RFC 7468 files", "rfc7468", NULL, NULL,
 	  FALSE, FALSE, 0,
+	  NULL, NULL, NULL },
+
+	/* WTAP_FILE_TYPE_SUBTYPE_RUBY_MARSHAL */
+	{ "Ruby marshal files", "ruby_marshal", NULL, NULL,
+	  FALSE, FALSE, 0,
+	  NULL, NULL, NULL },
+
+	/* WTAP_FILE_TYPE_SUBTYPE_SYSTEMD_JOURNAL */
+	{ "systemd journal export", "systemd journal", NULL, NULL,
+	  FALSE, FALSE, 0,
+	  NULL, NULL, NULL },
+
+	/* WTAP_FILE_TYPE_SUBTYPE_LOG_3GPP */
+	{ "3GPP Log", "3gpp_log", "*.log", NULL,
+	  TRUE, FALSE, 0,
 	  NULL, NULL, NULL }
 };
 
@@ -1635,7 +1678,7 @@ static const struct file_type_subtype_info* dump_open_table = dump_open_table_ba
  * to the number of elements in the static table, but, if we have to
  * allocate the GArray, it's changed to have the size of the GArray.
  */
-gint wtap_num_file_types_subtypes = sizeof(dump_open_table_base) / sizeof(struct file_type_subtype_info);
+static gint wtap_num_file_types_subtypes = sizeof(dump_open_table_base) / sizeof(struct file_type_subtype_info);
 
 /*
  * Pointer to the GArray; NULL until it's needed.
@@ -1664,7 +1707,15 @@ wtap_register_file_type_subtypes(const struct file_type_subtype_info* fi, const 
 {
 	struct file_type_subtype_info* finfo;
 
-	if (!fi || !fi->name || !fi->short_name || subtype > wtap_num_file_types_subtypes) {
+	/*
+	 * Check for required fields (name and short_name). If an existing file
+	 * type is overridden (as opposed as creating a new registration),
+	 * prevent internal subtypes from being overridden by Lua plugins.
+	 */
+	if (!fi || !fi->name || !fi->short_name ||
+			(subtype != WTAP_FILE_TYPE_SUBTYPE_UNKNOWN &&
+			(subtype <= (int)G_N_ELEMENTS(dump_open_table_base) ||
+			subtype > wtap_num_file_types_subtypes))) {
 		g_error("no file type info or invalid file type to register");
 		return subtype;
 	}
@@ -1673,7 +1724,7 @@ wtap_register_file_type_subtypes(const struct file_type_subtype_info* fi, const 
 	if (subtype == WTAP_FILE_TYPE_SUBTYPE_UNKNOWN) {
 		/* register a new one; first verify there isn't one named this already */
 		if (wtap_short_string_to_file_type_subtype(fi->short_name) > -1 ) {
-			g_error("file type short name already exists");
+			g_error("file type short name \"%s\" already exists", fi->short_name);
 			return subtype;
 		}
 
@@ -2018,18 +2069,21 @@ wtap_short_string_to_file_type_subtype(const char *short_name)
 
 static GSList *
 add_extensions_for_file_type_subtype(int file_type_subtype, GSList *extensions,
-    const char **compressed_file_extensions)
+    GSList *compression_type_extensions)
 {
 	gchar **extensions_set, **extensionp;
 	gchar *extension;
 
 	/*
-	 * Add the default extension, and all compressed variants of
-	 * it.
+	 * Add the default extension, and all of the compressed variants
+	 * from the list of compressed-file extensions, if there is a
+	 * default extension.
 	 */
-	extensions = add_extensions(extensions,
-	    dump_open_table[file_type_subtype].default_file_extension,
-	    compressed_file_extensions);
+	if (dump_open_table[file_type_subtype].default_file_extension != NULL) {
+		extensions = add_extensions(extensions,
+		    dump_open_table[file_type_subtype].default_file_extension,
+		    compression_type_extensions);
+	}
 
 	if (dump_open_table[file_type_subtype].additional_file_extensions != NULL) {
 		/*
@@ -2050,10 +2104,10 @@ add_extensions_for_file_type_subtype(int file_type_subtype, GSList *extensions,
 
 			/*
 			 * Add the extension, and all compressed variants
-			 * of it.
+			 * of it if requested.
 			 */
 			extensions = add_extensions(extensions, extension,
-			    compressed_file_extensions);
+			    compression_type_extensions);
 		}
 
 		g_strfreev(extensions_set);
@@ -2072,10 +2126,7 @@ add_extensions_for_file_type_subtype(int file_type_subtype, GSList *extensions,
 GSList *
 wtap_get_file_extensions_list(int file_type_subtype, gboolean include_compressed)
 {
-	GSList *extensions;
-	static const char *no_compressed_extensions[] = {
-		NULL
-	};
+	GSList *extensions, *compression_type_extensions;
 
 	if (file_type_subtype < 0 || file_type_subtype >= wtap_num_file_types_subtypes)
 		return NULL;	/* not a valid file type */
@@ -2089,16 +2140,63 @@ wtap_get_file_extensions_list(int file_type_subtype, gboolean include_compressed
 	 * Add all this file type's extensions, with compressed
 	 * variants if include_compressed is true.
 	 */
+	if (include_compressed) {
+		/*
+		 * Get compression-type extensions, if any.
+		 */
+		compression_type_extensions = wtap_get_all_compression_type_extensions_list();
+	} else {
+		/*
+		 * We don't want the compressed file extensions.
+		 */
+		compression_type_extensions = NULL;
+	}
 	extensions = add_extensions_for_file_type_subtype(file_type_subtype, extensions,
-	    include_compressed ? compressed_file_extension_table : no_compressed_extensions);
+	    compression_type_extensions);
+
+	g_slist_free(compression_type_extensions);
+
+	return extensions;
+}
+
+/* Return a list of all extensions that are used by all file types that
+   we can read, including compressed extensions, e.g. not just "pcap" but
+   also "pcap.gz" if we can read gzipped files.
+
+   "File type" means "include file types that correspond to collections
+   of network packets, as well as file types that store data that just
+   happens to be transported over protocols such as HTTP but that aren't
+   collections of network packets, and plain text files".
+
+   All strings in the list are allocated with g_malloc() and must be freed
+   with g_free(). */
+GSList *
+wtap_get_all_file_extensions_list(void)
+{
+	GSList *extensions, *compression_type_extensions;
+	int i;
+
+	extensions = NULL;	/* empty list, to start with */
+
+	/*
+	 * Get compression-type extensions, if any.
+	 */
+	compression_type_extensions = wtap_get_all_compression_type_extensions_list();
+
+	for (i = 0; i < WTAP_NUM_FILE_TYPES_SUBTYPES; i++) {
+		extensions = add_extensions_for_file_type_subtype(i, extensions,
+		    compression_type_extensions);
+	}
+
+	g_slist_free(compression_type_extensions);
 
 	return extensions;
 }
 
 /*
  * Free a list returned by wtap_get_file_extension_type_extensions(),
- * wtap_get_all_capture_file_extensions_list, or
- * wtap_get_file_extensions_list().
+ * wtap_get_all_capture_file_extensions_list, wtap_get_file_extensions_list(),
+ * or wtap_get_all_file_extensions_list().
  */
 void
 wtap_free_extensions_list(GSList *extensions)
@@ -2181,61 +2279,70 @@ wtap_dump_supports_comment_types(int file_type_subtype, guint32 comment_types)
 	return FALSE;
 }
 
-static gboolean wtap_dump_open_check(int file_type_subtype, int encap, gboolean comressed, int *err);
+static gboolean wtap_dump_open_check(int file_type_subtype, int encap, gboolean compressed, int *err);
 static wtap_dumper* wtap_dump_alloc_wdh(int file_type_subtype, int encap, int snaplen,
-					gboolean compressed, int *err);
-static gboolean wtap_dump_open_finish(wtap_dumper *wdh, int file_type_subtype, gboolean compressed, int *err);
+					wtap_compression_type compression_type,
+					int *err);
+static gboolean wtap_dump_open_finish(wtap_dumper *wdh, int file_type_subtype,
+				      int *err);
 
 static WFILE_T wtap_dump_file_open(wtap_dumper *wdh, const char *filename);
 static WFILE_T wtap_dump_file_fdopen(wtap_dumper *wdh, int fd);
 static int wtap_dump_file_close(wtap_dumper *wdh);
 
 static wtap_dumper *
-wtap_dump_init_dumper(int file_type_subtype, int encap, int snaplen, gboolean compressed,
-                      GArray* shb_hdrs, wtapng_iface_descriptions_t *idb_inf,
-                      GArray* nrb_hdrs, int *err)
+wtap_dump_init_dumper(int file_type_subtype, wtap_compression_type compression_type,
+                      const wtap_dump_params *params, int *err)
 {
 	wtap_dumper *wdh;
 	wtap_block_t descr, file_int_data;
 	wtapng_if_descr_mandatory_t *descr_mand, *file_int_data_mand;
+	GArray *interfaces = params->idb_inf ? params->idb_inf->interface_data : NULL;
 
 	/* Check whether we can open a capture file with that file type
-	   and that encapsulation. */
-	if (!wtap_dump_open_check(file_type_subtype, encap, compressed, err))
+	   and that encapsulation, and, if the compression type isn't
+	   "uncompressed", whether we can write a *compressed* file
+	   of that file type. */
+	if (!wtap_dump_open_check(file_type_subtype, params->encap,
+	    (compression_type != WTAP_UNCOMPRESSED), err))
 		return NULL;
 
 	/* Allocate a data structure for the output stream. */
-	wdh = wtap_dump_alloc_wdh(file_type_subtype, encap, snaplen, compressed, err);
+	wdh = wtap_dump_alloc_wdh(file_type_subtype, params->encap,
+	    params->snaplen, compression_type, err);
 	if (wdh == NULL)
 		return NULL;	/* couldn't allocate it */
 
 	/* Set Section Header Block data */
-	wdh->shb_hdrs = shb_hdrs;
+	wdh->shb_hdrs = params->shb_hdrs;
 	/* Set Name Resolution Block data */
-	wdh->nrb_hdrs = nrb_hdrs;
+	wdh->nrb_hdrs = params->nrb_hdrs;
 	/* Set Interface Description Block data */
-	if ((idb_inf != NULL) && (idb_inf->interface_data->len > 0)) {
+	if (interfaces && interfaces->len) {
 		guint itf_count;
 
 		/* Note: this memory is owned by wtap_dumper and will become
 		 * invalid after wtap_dump_close. */
-		wdh->interface_data = g_array_new(FALSE, FALSE, sizeof(wtap_block_t));
-		for (itf_count = 0; itf_count < idb_inf->interface_data->len; itf_count++) {
-			file_int_data = g_array_index(idb_inf->interface_data, wtap_block_t, itf_count);
+		for (itf_count = 0; itf_count < interfaces->len; itf_count++) {
+			file_int_data = g_array_index(interfaces, wtap_block_t, itf_count);
 			file_int_data_mand = (wtapng_if_descr_mandatory_t*)wtap_block_get_mandatory_data(file_int_data);
 			descr = wtap_block_create(WTAP_BLOCK_IF_DESCR);
 			wtap_block_copy(descr, file_int_data);
-			if ((encap != WTAP_ENCAP_PER_PACKET) && (encap != file_int_data_mand->wtap_encap)) {
+			if ((params->encap != WTAP_ENCAP_PER_PACKET) && (params->encap != file_int_data_mand->wtap_encap)) {
 				descr_mand = (wtapng_if_descr_mandatory_t*)wtap_block_get_mandatory_data(descr);
-				descr_mand->wtap_encap = encap;
+				descr_mand->wtap_encap = params->encap;
 			}
 			g_array_append_val(wdh->interface_data, descr);
 		}
 	} else {
+		int snaplen;
+
+		// XXX IDBs should be optional.
 		descr = wtap_block_create(WTAP_BLOCK_IF_DESCR);
 		descr_mand = (wtapng_if_descr_mandatory_t*)wtap_block_get_mandatory_data(descr);
-		descr_mand->wtap_encap = encap;
+		descr_mand->wtap_encap = params->encap;
 		descr_mand->time_units_per_second = 1000000; /* default microsecond resolution */
+		snaplen = params->snaplen;
 		if (snaplen == 0) {
 			/*
 			 * No snapshot length was specified.  Pick an
@@ -2244,44 +2351,42 @@ wtap_dump_init_dumper(int file_type_subtype, int encap, int snaplen, gboolean co
 			 *
 			 * We use WTAP_MAX_PACKET_SIZE_STANDARD for everything except
 			 * D-Bus, which has a maximum packet size of 128MB,
+			 * and EBHSCR, which has a maximum packet size of 8MB,
 			 * which is more than we want to put into files
 			 * with other link-layer header types, as that
 			 * might cause some software reading those files
 			 * to allocate an unnecessarily huge chunk of
 			 * memory for a packet buffer.
 			 */
-			if (encap == WTAP_ENCAP_DBUS)
+			if (params->encap == WTAP_ENCAP_DBUS)
 				snaplen = 128*1024*1024;
+			else if (params->encap == WTAP_ENCAP_EBHSCR)
+				snaplen = 8*1024*1024;
 			else
 				snaplen = WTAP_MAX_PACKET_SIZE_STANDARD;
 		}
 		descr_mand->snap_len = snaplen;
 		descr_mand->num_stat_entries = 0;          /* Number of ISB:s */
 		descr_mand->interface_statistics = NULL;
-		wdh->interface_data = g_array_new(FALSE, FALSE, sizeof(wtap_block_t));
 		g_array_append_val(wdh->interface_data, descr);
 	}
+	/* Set Decryption Secrets Blocks */
+	wdh->dsbs_initial = params->dsbs_initial;
+	wdh->dsbs_growing = params->dsbs_growing;
 	return wdh;
 }
 
 wtap_dumper *
-wtap_dump_open(const char *filename, int file_type_subtype, int encap,
-	       int snaplen, gboolean compressed, int *err)
-{
-	return wtap_dump_open_ng(filename, file_type_subtype, encap,snaplen, compressed, NULL, NULL, NULL, err);
-}
-
-wtap_dumper *
-wtap_dump_open_ng(const char *filename, int file_type_subtype, int encap,
-		  int snaplen, gboolean compressed, GArray* shb_hdrs, wtapng_iface_descriptions_t *idb_inf,
-		  GArray* nrb_hdrs, int *err)
+wtap_dump_open(const char *filename, int file_type_subtype,
+    wtap_compression_type compression_type, const wtap_dump_params *params,
+    int *err)
 {
 	wtap_dumper *wdh;
 	WFILE_T fh;
 
 	/* Allocate and initialize a data structure for the output stream. */
-	wdh = wtap_dump_init_dumper(file_type_subtype, encap, snaplen, compressed,
-	    shb_hdrs, idb_inf, nrb_hdrs, err);
+	wdh = wtap_dump_init_dumper(file_type_subtype, compression_type, params,
+	    err);
 	if (wdh == NULL)
 		return NULL;
 
@@ -2296,7 +2401,7 @@ wtap_dump_open_ng(const char *filename, int file_type_subtype, int encap,
 	}
 	wdh->fh = fh;
 
-	if (!wtap_dump_open_finish(wdh, file_type_subtype, compressed, err)) {
+	if (!wtap_dump_open_finish(wdh, file_type_subtype, err)) {
 		/* Get rid of the file we created; we couldn't finish
 		   opening it. */
 		wtap_dump_file_close(wdh);
@@ -2309,21 +2414,12 @@ wtap_dump_open_ng(const char *filename, int file_type_subtype, int encap,
 
 wtap_dumper *
 wtap_dump_open_tempfile(char **filenamep, const char *pfx,
-			int file_type_subtype, int encap,
-			int snaplen, gboolean compressed, int *err)
-{
-	return wtap_dump_open_tempfile_ng(filenamep, pfx, file_type_subtype, encap,snaplen, compressed, NULL, NULL, NULL, err);
-}
-
-wtap_dumper *
-wtap_dump_open_tempfile_ng(char **filenamep, const char *pfx,
-			   int file_type_subtype, int encap,
-			   int snaplen, gboolean compressed,
-			   GArray* shb_hdrs,
-			   wtapng_iface_descriptions_t *idb_inf,
-			   GArray* nrb_hdrs, int *err)
+    int file_type_subtype, wtap_compression_type compression_type,
+    const wtap_dump_params *params, int *err)
 {
 	int fd;
+	const char *ext;
+	char sfx[16];
 	char *tmpname;
 	wtap_dumper *wdh;
 	WFILE_T fh;
@@ -2332,13 +2428,21 @@ wtap_dump_open_tempfile_ng(char **filenamep, const char *pfx,
 	*filenamep = NULL;
 
 	/* Allocate and initialize a data structure for the output stream. */
-	wdh = wtap_dump_init_dumper(file_type_subtype, encap, snaplen, compressed,
-	    shb_hdrs, idb_inf, nrb_hdrs, err);
+	wdh = wtap_dump_init_dumper(file_type_subtype, compression_type, params,
+	    err);
 	if (wdh == NULL)
 		return NULL;
 
+	/* Choose an appropriate suffix for the file */
+	ext = wtap_default_file_extension(file_type_subtype);
+	if (ext == NULL)
+		ext = "tmp";
+	sfx[0] = '.';
+	sfx[1] = '\0';
+	g_strlcat(sfx, ext, 16);
+
 	/* Choose a random name for the file */
-	fd = create_tempfile(&tmpname, pfx, ".pcapng");
+	fd = create_tempfile(&tmpname, pfx, sfx);
 	if (fd == -1) {
 		*err = errno;
 		g_free(wdh);
@@ -2358,7 +2462,7 @@ wtap_dump_open_tempfile_ng(char **filenamep, const char *pfx,
 	}
 	wdh->fh = fh;
 
-	if (!wtap_dump_open_finish(wdh, file_type_subtype, compressed, err)) {
+	if (!wtap_dump_open_finish(wdh, file_type_subtype, err)) {
 		/* Get rid of the file we created; we couldn't finish
 		   opening it. */
 		wtap_dump_file_close(wdh);
@@ -2370,23 +2474,15 @@ wtap_dump_open_tempfile_ng(char **filenamep, const char *pfx,
 }
 
 wtap_dumper *
-wtap_dump_fdopen(int fd, int file_type_subtype, int encap, int snaplen,
-		 gboolean compressed, int *err)
-{
-	return wtap_dump_fdopen_ng(fd, file_type_subtype, encap, snaplen, compressed, NULL, NULL, NULL, err);
-}
-
-wtap_dumper *
-wtap_dump_fdopen_ng(int fd, int file_type_subtype, int encap, int snaplen,
-		    gboolean compressed, GArray* shb_hdrs, wtapng_iface_descriptions_t *idb_inf,
-		    GArray* nrb_hdrs, int *err)
+wtap_dump_fdopen(int fd, int file_type_subtype, wtap_compression_type compression_type,
+    const wtap_dump_params *params, int *err)
 {
 	wtap_dumper *wdh;
 	WFILE_T fh;
 
 	/* Allocate and initialize a data structure for the output stream. */
-	wdh = wtap_dump_init_dumper(file_type_subtype, encap, snaplen, compressed,
-	    shb_hdrs, idb_inf, nrb_hdrs, err);
+	wdh = wtap_dump_init_dumper(file_type_subtype, compression_type, params,
+	    err);
 	if (wdh == NULL)
 		return NULL;
 
@@ -2401,7 +2497,7 @@ wtap_dump_fdopen_ng(int fd, int file_type_subtype, int encap, int snaplen,
 	}
 	wdh->fh = fh;
 
-	if (!wtap_dump_open_finish(wdh, file_type_subtype, compressed, err)) {
+	if (!wtap_dump_open_finish(wdh, file_type_subtype, err)) {
 		wtap_dump_file_close(wdh);
 		g_free(wdh);
 		return NULL;
@@ -2410,17 +2506,8 @@ wtap_dump_fdopen_ng(int fd, int file_type_subtype, int encap, int snaplen,
 }
 
 wtap_dumper *
-wtap_dump_open_stdout(int file_type_subtype, int encap, int snaplen,
-		      gboolean compressed, int *err)
-{
-	return wtap_dump_open_stdout_ng(file_type_subtype, encap, snaplen, compressed, NULL, NULL, NULL, err);
-}
-
-wtap_dumper *
-wtap_dump_open_stdout_ng(int file_type_subtype, int encap, int snaplen,
-			 gboolean compressed, GArray* shb_hdrs,
-			 wtapng_iface_descriptions_t *idb_inf,
-			 GArray* nrb_hdrs, int *err)
+wtap_dump_open_stdout(int file_type_subtype, wtap_compression_type compression_type,
+    const wtap_dump_params *params, int *err)
 {
 	int new_fd;
 	wtap_dumper *wdh;
@@ -2451,8 +2538,8 @@ wtap_dump_open_stdout_ng(int file_type_subtype, int encap, int snaplen,
 	}
 #endif
 
-	wdh = wtap_dump_fdopen_ng(new_fd, file_type_subtype, encap, snaplen,
-	    compressed, shb_hdrs, idb_inf, nrb_hdrs, err);
+	wdh = wtap_dump_fdopen(new_fd, file_type_subtype, compression_type,
+	    params, err);
 	if (wdh == NULL) {
 		/* Failed; close the new FD */
 		ws_close(new_fd);
@@ -2496,7 +2583,8 @@ wtap_dump_open_check(int file_type_subtype, int encap, gboolean compressed, int 
 }
 
 static wtap_dumper *
-wtap_dump_alloc_wdh(int file_type_subtype, int encap, int snaplen, gboolean compressed, int *err)
+wtap_dump_alloc_wdh(int file_type_subtype, int encap, int snaplen,
+    wtap_compression_type compression_type, int *err)
 {
 	wtap_dumper *wdh;
 
@@ -2509,20 +2597,21 @@ wtap_dump_alloc_wdh(int file_type_subtype, int encap, int snaplen, gboolean comp
 	wdh->file_type_subtype = file_type_subtype;
 	wdh->snaplen = snaplen;
 	wdh->encap = encap;
-	wdh->compressed = compressed;
+	wdh->compression_type = compression_type;
 	wdh->wslua_data = NULL;
+	wdh->interface_data = g_array_new(FALSE, FALSE, sizeof(wtap_block_t));
 	return wdh;
 }
 
 static gboolean
-wtap_dump_open_finish(wtap_dumper *wdh, int file_type_subtype, gboolean compressed, int *err)
+wtap_dump_open_finish(wtap_dumper *wdh, int file_type_subtype, int *err)
 {
 	int fd;
 	gboolean cant_seek;
 
 	/* Can we do a seek on the file descriptor?
 	   If not, note that fact. */
-	if(compressed) {
+	if (wdh->compression_type != WTAP_UNCOMPRESSED) {
 		cant_seek = TRUE;
 	} else {
 		fd = ws_fileno((FILE *)wdh->fh);
@@ -2568,7 +2657,7 @@ void
 wtap_dump_flush(wtap_dumper *wdh)
 {
 #ifdef HAVE_ZLIB
-	if(wdh->compressed) {
+	if (wdh->compression_type == WTAP_GZIP_COMPRESSED) {
 		gzwfile_flush((GZWFILE_T)wdh->fh);
 	} else
 #endif
@@ -2600,6 +2689,7 @@ wtap_dump_close(wtap_dumper *wdh, int *err)
 	}
 	g_free(wdh->priv);
 	wtap_block_array_free(wdh->interface_data);
+	wtap_block_array_free(wdh->dsbs_initial);
 	g_free(wdh);
 	return ret;
 }
@@ -2634,6 +2724,28 @@ wtap_dump_set_addrinfo_list(wtap_dumper *wdh, addrinfo_lists_t *addrinfo_lists)
 	return TRUE;
 }
 
+void
+wtap_dump_discard_decryption_secrets(wtap_dumper *wdh)
+{
+	/*
+	 * This doesn't free the data, as it might be pointed to
+	 * from other structures; it merely marks all of them as
+	 * having been written to the file, so that they don't
+	 * get written by wtap_dump().
+	 *
+	 * XXX - our APIs for dealing with some metadata, such as
+	 * resolved names, decryption secrets, and interface
+	 * statistics is not very well oriented towards one-pass
+	 * programs; this needs to be cleaned up.  See bug 15502.
+	 */
+	if (wdh->dsbs_growing) {
+		/*
+		 * Pretend we've written all of them.
+		 */
+		wdh->dsbs_growing_written = wdh->dsbs_growing->len;
+	}
+}
+
 gboolean wtap_dump_get_needs_reload(wtap_dumper *wdh) {
         return wdh->needs_reload;
 }
@@ -2643,7 +2755,7 @@ gboolean wtap_dump_get_needs_reload(wtap_dumper *wdh) {
 static WFILE_T
 wtap_dump_file_open(wtap_dumper *wdh, const char *filename)
 {
-	if(wdh->compressed) {
+	if (wdh->compression_type == WTAP_GZIP_COMPRESSED) {
 		return gzwfile_open(filename);
 	} else {
 		return ws_fopen(filename, "wb");
@@ -2662,7 +2774,7 @@ wtap_dump_file_open(wtap_dumper *wdh _U_, const char *filename)
 static WFILE_T
 wtap_dump_file_fdopen(wtap_dumper *wdh, int fd)
 {
-	if(wdh->compressed) {
+	if (wdh->compression_type == WTAP_GZIP_COMPRESSED) {
 		return gzwfile_fdopen(fd);
 	} else {
 		return ws_fdopen(fd, "wb");
@@ -2683,7 +2795,7 @@ wtap_dump_file_write(wtap_dumper *wdh, const void *buf, size_t bufsize, int *err
 	size_t nwritten;
 
 #ifdef HAVE_ZLIB
-	if (wdh->compressed) {
+	if (wdh->compression_type == WTAP_GZIP_COMPRESSED) {
 		nwritten = gzwfile_write((GZWFILE_T)wdh->fh, buf, (unsigned int) bufsize);
 		/*
 		 * gzwfile_write() returns 0 on error.
@@ -2717,7 +2829,7 @@ static int
 wtap_dump_file_close(wtap_dumper *wdh)
 {
 #ifdef HAVE_ZLIB
-	if(wdh->compressed)
+	if (wdh->compression_type == WTAP_GZIP_COMPRESSED)
 		return gzwfile_close((GZWFILE_T)wdh->fh);
 	else
 #endif
@@ -2728,13 +2840,13 @@ gint64
 wtap_dump_file_seek(wtap_dumper *wdh, gint64 offset, int whence, int *err)
 {
 #ifdef HAVE_ZLIB
-	if(wdh->compressed) {
+	if (wdh->compression_type != WTAP_UNCOMPRESSED) {
 		*err = WTAP_ERR_CANT_SEEK_COMPRESSED;
 		return -1;
 	} else
 #endif
 	{
-		if (-1 == fseek((FILE *)wdh->fh, (long)offset, whence)) {
+		if (-1 == ws_fseek64((FILE *)wdh->fh, offset, whence)) {
 			*err = errno;
 			return -1;
 		} else
@@ -2749,13 +2861,13 @@ wtap_dump_file_tell(wtap_dumper *wdh, int *err)
 {
 	gint64 rval;
 #ifdef HAVE_ZLIB
-	if(wdh->compressed) {
+	if (wdh->compression_type != WTAP_UNCOMPRESSED) {
 		*err = WTAP_ERR_CANT_SEEK_COMPRESSED;
 		return -1;
 	} else
 #endif
 	{
-		if (-1 == (rval = ftell((FILE *)wdh->fh))) {
+		if (-1 == (rval = ws_ftell64((FILE *)wdh->fh))) {
 			*err = errno;
 			return -1;
 		} else
@@ -2783,7 +2895,7 @@ cleanup_open_routines(void)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

@@ -42,7 +42,7 @@ class CaptureFileDialog : public QFileDialog
     //
     // You can subclass QFileDialog (which we've done here) and add widgets as
     // described at
-    // http://developer.qt.nokia.com/faq/answer/how_can_i_add_widgets_to_my_qfiledialog_instance
+    // https://web.archive.org/web/20100528190736/http://developer.qt.nokia.com/faq/answer/how_can_i_add_widgets_to_my_qfiledialog_instance
     // However, Qt's idea of what a file dialog looks like isn't what Microsoft
     // and Apple think a file dialog looks like.
     //
@@ -68,7 +68,7 @@ public:
 
     int mergeType();
     int selectedFileType();
-    bool isCompressed();
+    wtap_compression_type compressionType();
 
 private:
     capture_file *cap_file_;
@@ -119,7 +119,7 @@ private:
 #else // Q_OS_WIN
     int file_type_;
     int merge_type_;
-    gboolean compressed_;
+    wtap_compression_type compression_type_;
 #endif // Q_OS_WIN
 
 signals:

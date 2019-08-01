@@ -24,6 +24,7 @@
 #include <epan/prefs.h>
 #include <epan/addr_resolv.h>
 #include <epan/expert.h>
+#include <epan/arptypes.h>
 #include "packet-ieee80211.h"
 #include "packet-ieee80211-radiotap-iter.h"
 
@@ -179,6 +180,8 @@ static int hf_radiotap_present_vht = -1;
 static int hf_radiotap_present_timestamp = -1;
 static int hf_radiotap_present_he = -1;
 static int hf_radiotap_present_he_mu = -1;
+static int hf_radiotap_present_0_length_psdu = -1;
+static int hf_radiotap_present_l_sig = -1;
 static int hf_radiotap_present_reserved = -1;
 static int hf_radiotap_present_rtap_ns = -1;
 static int hf_radiotap_present_vendor_ns = -1;
@@ -290,35 +293,60 @@ static int hf_radiotap_he_mu_sig_b_mcs_known = -1;
 static int hf_radiotap_he_mu_sig_b_dcm = -1;
 static int hf_radiotap_he_mu_sig_b_dcm_unknown = -1;
 static int hf_radiotap_he_mu_sig_b_dcm_known = -1;
-static int hf_radiotap_he_mu_reserved_f1_b7 = -1;
-static int hf_radiotap_he_mu_ru_0_known = -1;
-static int hf_radiotap_he_mu_ru_1_known = -1;
-static int hf_radiotap_he_mu_ru_2_known = -1;
-static int hf_radiotap_he_mu_ru_3_known = -1;
-static int hf_radiotap_he_mu_center_26_tone_ru_bit_known = -1;
-static int hf_radiotap_he_mu_center_26_tone_ru_value = -1;
+static int hf_radiotap_he_mu_chan2_center_26_tone_ru_bit_known = -1;
+static int hf_radiotap_he_mu_chan2_center_26_tone_ru_bit_unknown = -1;
+static int hf_radiotap_he_mu_chan1_rus_known = -1;
+static int hf_radiotap_he_mu_chan1_rus_unknown = -1;
+static int hf_radiotap_he_mu_chan2_rus_known = -1;
+static int hf_radiotap_he_mu_chan2_rus_unknown = -1;
+static int hf_radiotap_he_mu_reserved_f1_b10_b11 = -1;
+static int hf_radiotap_he_mu_chan1_center_26_tone_ru_bit_known = -1;
+static int hf_radiotap_he_mu_chan1_center_26_tone_ru_bit_unknown = -1;
+static int hf_radiotap_he_mu_chan1_center_26_tone_ru_value = -1;
 static int hf_radiotap_he_mu_sig_b_compression_known = -1;
+static int hf_radiotap_he_mu_sig_b_compression_unknown = -1;
+static int hf_radiotap_he_mu_sig_b_compression_from_sig_a = -1;
 static int hf_radiotap_he_mu_sig_b_syms_mu_mimo_users_known = -1;
 static int hf_radiotap_he_mu_sig_b_syms_mu_mimo_users_unknown = -1;
 static int hf_radiotap_he_mu_info_flags_1 = -1;
 static int hf_radiotap_he_mu_bw_from_bw_in_sig_a = -1;
 static int hf_radiotap_he_mu_bw_from_bw_in_sig_a_unknown = -1;
 static int hf_radiotap_he_mu_bw_from_bw_in_sig_a_known = -1;
-static int hf_radiotap_he_mu_sig_b_compression_from_sig_a = -1;
 static int hf_radiotap_he_mu_sig_b_syms_mu_mimo_users = -1;
 static int hf_radiotap_he_mu_preamble_puncturing = -1;
 static int hf_radiotap_he_mu_preamble_puncturing_unknown = -1;
 static int hf_radiotap_he_mu_preamble_puncturing_known = -1;
-static int hf_radiotap_he_mu_reserved_f2_b11_b15 = -1;
+static int hf_radiotap_he_mu_chan2_center_26_tone_ru_value = -1;
+static int hf_radiotap_he_mu_reserved_f2_b12_b15 = -1;
 static int hf_radiotap_he_mu_info_flags_2 = -1;
-static int hf_radiotap_he_mu_ru_0 = -1;
-static int hf_radiotap_he_mu_ru_0_unknown = -1;
-static int hf_radiotap_he_mu_ru_1 = -1;
-static int hf_radiotap_he_mu_ru_1_unknown = -1;
-static int hf_radiotap_he_mu_ru_2 = -1;
-static int hf_radiotap_he_mu_ru_2_unknown = -1;
-static int hf_radiotap_he_mu_ru_3 = -1;
-static int hf_radiotap_he_mu_ru_3_unknown = -1;
+static int hf_radiotap_he_mu_chan1_rus_0 = -1;
+static int hf_radiotap_he_mu_chan1_rus_0_unknown = -1;
+static int hf_radiotap_he_mu_chan1_rus_1 = -1;
+static int hf_radiotap_he_mu_chan1_rus_1_unknown = -1;
+static int hf_radiotap_he_mu_chan1_rus_2 = -1;
+static int hf_radiotap_he_mu_chan1_rus_2_unknown = -1;
+static int hf_radiotap_he_mu_chan1_rus_3 = -1;
+static int hf_radiotap_he_mu_chan1_rus_3_unknown = -1;
+static int hf_radiotap_he_mu_chan2_rus_0 = -1;
+static int hf_radiotap_he_mu_chan2_rus_0_unknown = -1;
+static int hf_radiotap_he_mu_chan2_rus_1 = -1;
+static int hf_radiotap_he_mu_chan2_rus_1_unknown = -1;
+static int hf_radiotap_he_mu_chan2_rus_2 = -1;
+static int hf_radiotap_he_mu_chan2_rus_2_unknown = -1;
+static int hf_radiotap_he_mu_chan2_rus_3 = -1;
+static int hf_radiotap_he_mu_chan2_rus_3_unknown = -1;
+
+/* 0-length-psdu */
+static int hf_radiotap_0_length_psdu_type = -1;
+
+/* L-SIG */
+static int hf_radiotap_l_sig_data_1 = -1;
+static int hf_radiotap_l_sig_rate_known = -1;
+static int hf_radiotap_l_sig_length_known = -1;
+static int hf_radiotap_l_sig_reserved = -1;
+static int hf_radiotap_l_sig_data_2 = -1;
+static int hf_radiotap_l_sig_rate = -1;
+static int hf_radiotap_l_sig_length = -1;
 
 static gint ett_radiotap = -1;
 static gint ett_radiotap_present = -1;
@@ -347,33 +375,37 @@ static gint ett_radiotap_he_info_data_6 = -1;
 static gint ett_radiotap_he_mu_info = -1;
 static gint ett_radiotap_he_mu_info_flags_1 = -1;
 static gint ett_radiotap_he_mu_info_flags_2 = -1;
+static gint ett_radiotap_he_mu_chan_rus = -1;
+static gint ett_radiotap_0_length_psdu = -1;
+static gint ett_radiotap_l_sig = -1;
+static gint ett_radiotap_l_sig_data_1 = -1;
+static gint ett_radiotap_l_sig_data_2 = -1;
 
+static expert_field ei_radiotap_invalid_header_length = EI_INIT;
 static expert_field ei_radiotap_data_past_header = EI_INIT;
 static expert_field ei_radiotap_present_reserved = EI_INIT;
 static expert_field ei_radiotap_present = EI_INIT;
 static expert_field ei_radiotap_invalid_data_rate = EI_INIT;
-static expert_field ei_radiotap_he_mu_upgrade_needed = EI_INIT;
 
 static dissector_handle_t ieee80211_radio_handle;
 
 static capture_dissector_handle_t ieee80211_cap_handle;
 static capture_dissector_handle_t ieee80211_datapad_cap_handle;
 
-static int radiotap_tap = -1;
-
 /* Settings */
 static gboolean radiotap_bit14_fcs = FALSE;
 static gboolean radiotap_interpret_high_rates_as_mcs = FALSE;
 
-struct _radiotap_info {
-	guint radiotap_length;
-	guint32 rate;
-	gint8 dbm_antsignal;
-	gint8 dbm_antnoise;
-	guint32 freq;
-	guint32 flags;
-	guint64 tsft;
+#define USE_FCS_BIT        0
+#define ASSUME_FCS_PRESENT 1
+#define ASSUME_FCS_ABSENT  2
+static const enum_val_t fcs_handling[] = {
+	{ "use_fcs_bit", "Use the FCS bit", USE_FCS_BIT },
+	{ "assume_fcs_present",  "Assume all packets have an FCS at the end", ASSUME_FCS_PRESENT },
+	{ "assume_fcs_absent",  "Assume all packets don't have an FCS at the end", ASSUME_FCS_ABSENT },
+	{ NULL, NULL, 0 }
 };
+static int radiotap_fcs_handling = USE_FCS_BIT;
 
 #define BITNO_32(x) (((x) >> 16) ? 16 + BITNO_16((x) >> 16) : BITNO_16((x)))
 #define BITNO_16(x) (((x) >> 8) ? 8 + BITNO_8((x) >> 8) : BITNO_8((x)))
@@ -972,11 +1004,6 @@ static const value_string he_midamble_periodicity_vals[] = {
 	{ 0, NULL }
 };
 
-/*
- * NOTE: this is a suggested field, not a defined field, and its bit
- * assignment and format are subject to change, although an experimental
- * Linux patch uses bit 23 and the current format on radiotap.org.
- */
 static void
 dissect_radiotap_he_info(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree,
 	int offset)
@@ -1176,13 +1203,12 @@ static const int *flags1_headers[] = {
 	&hf_radiotap_he_mu_sig_b_mcs_known,
 	&hf_radiotap_he_mu_sig_b_dcm,
 	&hf_radiotap_he_mu_sig_b_dcm_known,
-	&hf_radiotap_he_mu_reserved_f1_b7,
-	&hf_radiotap_he_mu_ru_0_known,
-	&hf_radiotap_he_mu_ru_1_known,
-	&hf_radiotap_he_mu_ru_2_known,
-	&hf_radiotap_he_mu_ru_3_known,
-	&hf_radiotap_he_mu_center_26_tone_ru_bit_known,
-	&hf_radiotap_he_mu_center_26_tone_ru_value,
+	&hf_radiotap_he_mu_chan2_center_26_tone_ru_bit_known,
+	&hf_radiotap_he_mu_chan1_rus_known,
+	&hf_radiotap_he_mu_chan2_rus_known,
+	&hf_radiotap_he_mu_reserved_f1_b10_b11,
+	&hf_radiotap_he_mu_chan1_center_26_tone_ru_bit_known,
+	&hf_radiotap_he_mu_chan1_center_26_tone_ru_value,
 	&hf_radiotap_he_mu_sig_b_compression_known,
 	&hf_radiotap_he_mu_sig_b_syms_mu_mimo_users_known,
 	NULL
@@ -1195,19 +1221,22 @@ static const int *flags2_headers[] = {
 	&hf_radiotap_he_mu_sig_b_syms_mu_mimo_users,
 	&hf_radiotap_he_mu_preamble_puncturing,
 	&hf_radiotap_he_mu_preamble_puncturing_known,
-	&hf_radiotap_he_mu_reserved_f2_b11_b15,
+	&hf_radiotap_he_mu_chan2_center_26_tone_ru_value,
+	&hf_radiotap_he_mu_reserved_f2_b12_b15,
 	NULL
 };
 
-/*
- * NOTE: this is a suggested field, not a defined field, and its bit
- * assignment and format are subject to change, although an experimental
- * Linux patch may use bit 24 and the current format on radiotap.org.
- */
+static void
+not_captured_custom(gchar *result, guint32 value _U_)
+{
+	g_snprintf(result, ITEM_LABEL_LENGTH,
+		"NOT CAPTURED BY CAPTURE SOFTWARE");
+}
+
 static void
 he_sig_b_symbols_custom(gchar *result, guint32 value)
 {
-  g_snprintf(result, ITEM_LABEL_LENGTH, "%d", value+1);
+	g_snprintf(result, ITEM_LABEL_LENGTH, "%d", value+1);
 }
 
 static void
@@ -1218,102 +1247,294 @@ dissect_radiotap_he_mu_info(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *t
 	guint16 flags1 = tvb_get_letohs(tvb, offset);
 	gboolean sig_b_mcs_known = FALSE;
 	gboolean sig_b_dcm_known = FALSE;
-	gboolean mu_ru_0_known = FALSE;
-	gboolean mu_ru_1_known = FALSE;
-	gboolean mu_ru_2_known = FALSE;
-	gboolean mu_ru_3_known = FALSE;
+	proto_tree *mu_chan1_rus = NULL;
+	proto_tree *mu_chan2_rus = NULL;
+	int mu_rus_chan1_rus_0 = -1;
+	int mu_rus_chan1_rus_1 = -1;
+	int mu_rus_chan1_rus_2 = -1;
+	int mu_rus_chan1_rus_3 = -1;
+	int mu_rus_chan2_rus_0 = -1;
+	int mu_rus_chan2_rus_1 = -1;
+	int mu_rus_chan2_rus_2 = -1;
+	int mu_rus_chan2_rus_3 = -1;
+	gboolean mu_chan2_center_26_tone_ru_bit_known = FALSE;
+	gboolean mu_chan1_rus_known = FALSE;
+	gboolean mu_chan2_rus_known = FALSE;
+	gboolean mu_chan1_center_26_tone_ru_bit_known = FALSE;
+	gboolean mu_sig_b_compression_known = FALSE;
 	gboolean mu_symbol_cnt_or_user_cnt_known = FALSE;
 	gboolean mu_preamble_puncturing_known = FALSE;
-	gboolean bw_from_bw_sig_a_known = FALSE;
+	gboolean mu_bw_from_bw_sig_a_known = FALSE;
+	guint8 bw_from_sig_a = 0;
 	guint16 flags2;
-
-	/*
-	 * Because the spec has changed, anyone with captures that include
-	 * the HE_MU header must upgrade.
-	 */
-	expert_add_info(pinfo, tree,
-		    &ei_radiotap_he_mu_upgrade_needed);
 
 	if (flags1 & IEEE80211_RADIOTAP_HE_MU_SIG_B_MCS_KNOWN)
 		sig_b_mcs_known = TRUE;
 	if (flags1 & IEEE80211_RADIOTAP_HE_MU_SIG_B_DCM_KNOWN)
 		sig_b_dcm_known = TRUE;
-	if (flags1 & IEEE80211_RADIOTAP_HE_MU_RU_0_KNOWN)
-		mu_ru_0_known = TRUE;
-	if (flags1 & IEEE80211_RADIOTAP_HE_MU_RU_1_KNOWN)
-		mu_ru_1_known = TRUE;
-	if (flags1 & IEEE80211_RADIOTAP_HE_MU_RU_2_KNOWN)
-		mu_ru_2_known = TRUE;
-	if (flags1 & IEEE80211_RADIOTAP_HE_MU_RU_3_KNOWN)
-		mu_ru_3_known = TRUE;
+	if (flags1 & IEEE80211_RADIOTAP_HE_MU_CHAN2_CENTER_26_TONE_RU_BIT_KNOWN)
+		mu_chan2_center_26_tone_ru_bit_known = TRUE;
+	if (flags1 & IEEE80211_RADIOTAP_HE_MU_CHAN1_RUS_KNOWN)
+		mu_chan1_rus_known = TRUE;
+	if (flags1 & IEEE80211_RADIOTAP_HE_MU_CHAN2_RUS_KNOWN)
+		mu_chan2_rus_known = TRUE;
+	if (flags1 & IEEE80211_RADIOTAP_HE_MU_CHAN1_CENTER_26_TONE_RU_BIT_KNOWN)
+		mu_chan1_center_26_tone_ru_bit_known = TRUE;
+	if (flags1 & IEEE80211_RADIOTAP_HE_MU_SIG_B_COMPRESSION_KNOWN)
+		mu_sig_b_compression_known = TRUE;
 	if (flags1 & IEEE80211_RADIOTAP_HE_MU_SYMBOL_CNT_OR_USER_CNT_KNOWN)
 		mu_symbol_cnt_or_user_cnt_known = TRUE;
 
-	if (!sig_b_mcs_known)
-		flags1_headers[0] = &hf_radiotap_he_mu_sig_b_mcs_unknown;
-	if (!sig_b_dcm_known)
-		flags1_headers[2] = &hf_radiotap_he_mu_sig_b_dcm_unknown;
+	if (!sig_b_mcs_known) {
+		flags1_headers[1] = &hf_radiotap_he_mu_sig_b_mcs_unknown;
+	} else {
+		flags1_headers[1] = &hf_radiotap_he_mu_sig_b_mcs_known;
+	}
+	if (!sig_b_dcm_known) {
+		flags1_headers[3] = &hf_radiotap_he_mu_sig_b_dcm_unknown;
+	} else {
+		flags1_headers[3] = &hf_radiotap_he_mu_sig_b_dcm_known;
+	}
+	if (!mu_chan2_center_26_tone_ru_bit_known) {
+		flags1_headers[4] = &hf_radiotap_he_mu_chan2_center_26_tone_ru_bit_unknown;
+	} else {
+		flags1_headers[4] = &hf_radiotap_he_mu_chan2_center_26_tone_ru_bit_known;
+	}
+	if (!mu_chan1_rus_known) {
+		flags1_headers[5] = &hf_radiotap_he_mu_chan1_rus_unknown;
+	} else {
+		flags1_headers[5] = &hf_radiotap_he_mu_chan1_rus_known;
+	}
+	if (!mu_chan1_center_26_tone_ru_bit_known) {
+		flags1_headers[8] = &hf_radiotap_he_mu_chan1_center_26_tone_ru_bit_unknown;
+	} else {
+		flags1_headers[8] = &hf_radiotap_he_mu_chan1_center_26_tone_ru_bit_known;
+	}
+	if (!mu_symbol_cnt_or_user_cnt_known) {
+		flags1_headers[11] = &hf_radiotap_he_mu_sig_b_syms_mu_mimo_users_unknown;
+	} else {
+		flags1_headers[11] = &hf_radiotap_he_mu_sig_b_syms_mu_mimo_users_known;
+	}
 
-	he_mu_info_tree = proto_tree_add_subtree(tree, tvb, offset, 8,
+	if (!mu_chan1_center_26_tone_ru_bit_known) {
+		flags1_headers[9] = &hf_radiotap_he_mu_chan1_center_26_tone_ru_bit_unknown;
+	} else {
+		flags1_headers[9] = &hf_radiotap_he_mu_chan1_center_26_tone_ru_value;
+	}
+	if (!mu_symbol_cnt_or_user_cnt_known) {
+		flags1_headers[11] = &hf_radiotap_he_mu_sig_b_syms_mu_mimo_users_unknown;
+	} else {
+		flags1_headers[11] = &hf_radiotap_he_mu_sig_b_syms_mu_mimo_users_known;
+	}
+
+	flags2 = tvb_get_letohs(tvb, offset + 2);
+	if (flags2 & IEEE80211_RADIOTAP_HE_MU_BW_FROM_BW_IN_SIG_A_KNOWN)
+		mu_bw_from_bw_sig_a_known = TRUE;
+	if (flags2 & IEEE80211_RADIOTAP_HE_MU_PREAMBLE_PUNCTURING_KNOWN)
+		mu_preamble_puncturing_known = TRUE;
+
+	if (!mu_bw_from_bw_sig_a_known) {
+		flags2_headers[0] = &hf_radiotap_he_mu_bw_from_bw_in_sig_a_unknown;
+	} else {
+		flags2_headers[0] = &hf_radiotap_he_mu_bw_from_bw_in_sig_a;
+	}
+	if (!mu_sig_b_compression_known) {
+		flags2_headers[2] = &hf_radiotap_he_mu_sig_b_compression_unknown;
+	} else {
+		flags2_headers[2] = &hf_radiotap_he_mu_sig_b_compression_from_sig_a;
+	}
+	if (!mu_symbol_cnt_or_user_cnt_known) {
+		flags2_headers[3] = &hf_radiotap_he_mu_sig_b_syms_mu_mimo_users_unknown;
+	} else {
+		flags2_headers[3] = &hf_radiotap_he_mu_sig_b_syms_mu_mimo_users;
+	}
+	if (!mu_preamble_puncturing_known) {
+		flags2_headers[4] = &hf_radiotap_he_mu_preamble_puncturing_unknown;
+	} else {
+		flags2_headers[4] = &hf_radiotap_he_mu_preamble_puncturing;
+	}
+	if (!mu_chan2_center_26_tone_ru_bit_known) {
+		flags2_headers[6] = &hf_radiotap_he_mu_chan2_center_26_tone_ru_bit_unknown;
+	} else {
+		flags2_headers[6] = &hf_radiotap_he_mu_chan2_center_26_tone_ru_value;
+	}
+
+	bw_from_sig_a = flags2 & IEEE80211_RADIOTAP_HE_MU_BW_FROM_BW_IN_SIG_A_MASK;
+
+	/*
+	 * We have to hold of on displaying stuff until we have figured
+	 * everything out because the display of fields in flags1 depends
+	 *  on bandwidth from flags2.
+	 */
+
+	/* Set the header fields depending on the bw and known fields */
+	if (bw_from_sig_a < 3) {
+		if (mu_chan1_rus_known) {
+			mu_rus_chan1_rus_0 = hf_radiotap_he_mu_chan1_rus_0;
+			mu_rus_chan1_rus_1 = hf_radiotap_he_mu_chan1_rus_1;
+			mu_rus_chan1_rus_2 = hf_radiotap_he_mu_chan1_rus_2;
+			mu_rus_chan1_rus_3 = hf_radiotap_he_mu_chan1_rus_3;
+		} else {
+			mu_rus_chan1_rus_0 = hf_radiotap_he_mu_chan1_rus_0_unknown;
+			mu_rus_chan1_rus_1 = hf_radiotap_he_mu_chan1_rus_1_unknown;
+			mu_rus_chan1_rus_2 = hf_radiotap_he_mu_chan1_rus_2_unknown;
+			mu_rus_chan1_rus_3 = hf_radiotap_he_mu_chan1_rus_3_unknown;
+		}
+		if (mu_chan2_rus_known) {
+			mu_rus_chan2_rus_0 = hf_radiotap_he_mu_chan2_rus_0;
+			mu_rus_chan2_rus_1 = hf_radiotap_he_mu_chan2_rus_1;
+			mu_rus_chan2_rus_2 = hf_radiotap_he_mu_chan2_rus_2;
+			mu_rus_chan2_rus_3 = hf_radiotap_he_mu_chan2_rus_3;
+		} else {
+			mu_rus_chan2_rus_0 = hf_radiotap_he_mu_chan2_rus_0_unknown;
+			mu_rus_chan2_rus_1 = hf_radiotap_he_mu_chan2_rus_1_unknown;
+			mu_rus_chan2_rus_2 = hf_radiotap_he_mu_chan2_rus_2_unknown;
+			mu_rus_chan2_rus_3 = hf_radiotap_he_mu_chan2_rus_3_unknown;
+		}
+	} else {
+		mu_rus_chan1_rus_0 = hf_radiotap_he_mu_chan1_rus_0;
+		mu_rus_chan1_rus_1 = hf_radiotap_he_mu_chan1_rus_1;
+		mu_rus_chan1_rus_2 = hf_radiotap_he_mu_chan1_rus_2;
+		mu_rus_chan1_rus_3 = hf_radiotap_he_mu_chan1_rus_3;
+		mu_rus_chan2_rus_0 = hf_radiotap_he_mu_chan2_rus_0;
+		mu_rus_chan2_rus_1 = hf_radiotap_he_mu_chan2_rus_1;
+		mu_rus_chan2_rus_2 = hf_radiotap_he_mu_chan2_rus_2;
+		mu_rus_chan2_rus_3 = hf_radiotap_he_mu_chan2_rus_3;
+	}
+
+	he_mu_info_tree = proto_tree_add_subtree(tree, tvb, offset, 12,
 		ett_radiotap_he_mu_info, NULL, "HE-MU information");
 
 	proto_tree_add_bitmask(he_mu_info_tree, tvb, offset,
-		hf_radiotap_he_mu_info_flags_1, ett_radiotap_he_mu_info_flags_1,
-		flags1_headers, ENC_LITTLE_ENDIAN);
+				hf_radiotap_he_mu_info_flags_1,
+				ett_radiotap_he_mu_info_flags_1,
+				flags1_headers, ENC_LITTLE_ENDIAN);
 	offset += 2;
-
-	flags2 = tvb_get_letohs(tvb, offset);
-	if (flags2 & IEEE80211_RADIOTAP_HE_MU_BW_FROM_BW_IN_SIG_A_KNOWN)
-		bw_from_bw_sig_a_known = TRUE;
-	if (flags2 & IEEE80211_RADIOTAP_HE_MU_PREAMBLE_PUNCTURING_KNOWN)
-                mu_preamble_puncturing_known = TRUE;
-
-	if (!bw_from_bw_sig_a_known)
-		flags2_headers[0] = &hf_radiotap_he_mu_bw_from_bw_in_sig_a_unknown;
-	if (!mu_symbol_cnt_or_user_cnt_known)
-		flags2_headers[3] = &hf_radiotap_he_mu_sig_b_syms_mu_mimo_users_unknown;
-	if (!mu_preamble_puncturing_known)
-		flags2_headers[4] = &hf_radiotap_he_mu_preamble_puncturing_unknown;
 
 	proto_tree_add_bitmask(he_mu_info_tree, tvb, offset,
-		hf_radiotap_he_mu_info_flags_2, ett_radiotap_he_mu_info_flags_2,
-		flags2_headers, ENC_LITTLE_ENDIAN);
+				hf_radiotap_he_mu_info_flags_2,
+				ett_radiotap_he_mu_info_flags_2,
+				flags2_headers, ENC_LITTLE_ENDIAN);
 	offset += 2;
 
-	proto_tree_add_item(he_mu_info_tree,
-			mu_ru_0_known ? hf_radiotap_he_mu_ru_0 :
-					hf_radiotap_he_mu_ru_0_unknown,
-			tvb, offset, 1, ENC_NA);
+	mu_chan1_rus = proto_tree_add_subtree(he_mu_info_tree, tvb, offset, 4,
+				ett_radiotap_he_mu_chan_rus, NULL,
+				"Channel 1 RUs");
+
+	proto_tree_add_item(mu_chan1_rus, mu_rus_chan1_rus_0, tvb, offset, 1,
+				ENC_NA);
 	offset++;
 
-	proto_tree_add_item(he_mu_info_tree,
-			mu_ru_1_known ? hf_radiotap_he_mu_ru_1 :
-					hf_radiotap_he_mu_ru_1_unknown,
-			tvb, offset, 1, ENC_NA);
+	proto_tree_add_item(mu_chan1_rus, mu_rus_chan1_rus_1, tvb, offset, 1,
+				ENC_NA);
 	offset++;
 
-	proto_tree_add_item(he_mu_info_tree,
-			mu_ru_2_known ? hf_radiotap_he_mu_ru_2 :
-					hf_radiotap_he_mu_ru_2_unknown,
-			tvb, offset, 1, ENC_NA);
+	proto_tree_add_item(mu_chan1_rus, mu_rus_chan1_rus_2, tvb, offset, 1,
+				ENC_NA);
 	offset++;
 
-	proto_tree_add_item(he_mu_info_tree,
-			mu_ru_3_known ? hf_radiotap_he_mu_ru_3 :
-					hf_radiotap_he_mu_ru_3_unknown,
-			tvb, offset, 1, ENC_NA);
+	proto_tree_add_item(mu_chan1_rus, mu_rus_chan1_rus_3, tvb, offset, 1,
+				ENC_NA);
+	offset++;
+
+	mu_chan2_rus = proto_tree_add_subtree(he_mu_info_tree, tvb, offset, 4,
+				ett_radiotap_he_mu_chan_rus, NULL,
+				"Channel 2 RUs");
+
+	proto_tree_add_item(mu_chan2_rus, mu_rus_chan2_rus_0, tvb, offset, 1,
+				ENC_NA);
+	offset++;
+
+	proto_tree_add_item(mu_chan2_rus, mu_rus_chan2_rus_1, tvb, offset, 1,
+				ENC_NA);
+	offset++;
+
+	proto_tree_add_item(mu_chan2_rus, mu_rus_chan2_rus_2, tvb, offset, 1,
+				ENC_NA);
+	offset++;
+
+	proto_tree_add_item(mu_chan2_rus, mu_rus_chan2_rus_3, tvb, offset, 1,
+				ENC_NA);
+}
+
+static const range_string zero_length_psdu_rsvals[] = {
+	{ 0, 0, "sounding PPDU" },
+	{ 1, 254, "reserved" },
+	{ 255, 255, "vendor-specific" },
+	{ 0, 0, NULL }
+};
+
+static void
+dissect_radiotap_0_length_psdu(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree,
+	int offset, struct ieee_802_11_phdr *phdr)
+{
+	proto_tree *zero_len_tree = NULL;
+	guint32 psdu_type;
+
+	zero_len_tree = proto_tree_add_subtree(tree, tvb, offset, 1,
+		ett_radiotap_0_length_psdu, NULL, "0-length PSDU");
+
+	proto_tree_add_item_ret_uint(zero_len_tree, hf_radiotap_0_length_psdu_type,
+		tvb, offset, 1, ENC_NA, &psdu_type);
+	switch (psdu_type) {
+
+	case 0:
+		phdr->has_zero_length_psdu_type = TRUE;
+		phdr->zero_length_psdu_type = PHDR_802_11_SOUNDING_PSDU;
+		break;
+
+	case 1:
+		phdr->has_zero_length_psdu_type = TRUE;
+		phdr->zero_length_psdu_type = PHDR_802_11_DATA_NOT_CAPTURED;
+		break;
+
+	case 0xff:
+		phdr->has_zero_length_psdu_type = TRUE;
+		phdr->zero_length_psdu_type = PHDR_802_11_0_LENGTH_PSDU_VENDOR_SPECIFIC;
+		break;
+	}
+}
+
+static const int *l_sig_data1_headers[] = {
+	&hf_radiotap_l_sig_rate_known,
+	&hf_radiotap_l_sig_length_known,
+	&hf_radiotap_l_sig_reserved,
+	NULL
+};
+
+static const int *l_sig_data2_headers[] = {
+	&hf_radiotap_l_sig_rate,
+	&hf_radiotap_l_sig_length,
+	NULL
+};
+
+static void
+dissect_radiotap_l_sig(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree,
+	int offset)
+{
+	proto_tree *l_sig_tree = NULL;
+
+	l_sig_tree = proto_tree_add_subtree(tree, tvb, offset, 4,
+		ett_radiotap_l_sig, NULL, "L-SIG");
+
+	proto_tree_add_bitmask(l_sig_tree, tvb, offset,
+		hf_radiotap_l_sig_data_1, ett_radiotap_l_sig_data_1,
+		l_sig_data1_headers, ENC_LITTLE_ENDIAN);
+	offset += 2;
+
+	proto_tree_add_bitmask(l_sig_tree, tvb, offset,
+		hf_radiotap_l_sig_data_2, ett_radiotap_l_sig_data_2,
+		l_sig_data2_headers, ENC_LITTLE_ENDIAN);
 }
 
 static void
 dissect_radiotap_tsft(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree,
-	int offset, struct _radiotap_info *radiotap_info,
-	struct ieee_802_11_phdr *phdr)
+	int offset, struct ieee_802_11_phdr *phdr)
 {
-	radiotap_info->tsft = tvb_get_letoh64(tvb, offset);
-	phdr->tsf_timestamp = radiotap_info->tsft;
+	phdr->tsf_timestamp = tvb_get_letoh64(tvb, offset);
 	phdr->has_tsf_timestamp = TRUE;
 	proto_tree_add_uint64(tree, hf_radiotap_mactime, tvb, offset, 8,
-			      radiotap_info->tsft);
+			      phdr->tsf_timestamp);
 }
 
 static void
@@ -1326,11 +1547,23 @@ dissect_radiotap_flags(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree,
 	*rflags = tvb_get_guint8(tvb, offset);
 	if (*rflags & IEEE80211_RADIOTAP_F_DATAPAD)
 		phdr->datapad = TRUE;
-	if (*rflags & IEEE80211_RADIOTAP_F_FCS)
-		phdr->fcs_len = 4;
-	else
-		phdr->fcs_len = 0;
+	switch (radiotap_fcs_handling) {
 
+	case USE_FCS_BIT:
+		if (*rflags & IEEE80211_RADIOTAP_F_FCS)
+			phdr->fcs_len = 4;
+		else
+			phdr->fcs_len = 0;
+		break;
+
+	case ASSUME_FCS_PRESENT:
+		phdr->fcs_len = 4;
+		break;
+
+	case ASSUME_FCS_ABSENT:
+		phdr->fcs_len = 0;
+		break;
+	}
 	ft = proto_tree_add_item(tree, hf_radiotap_flags, tvb, offset,
 				1, ENC_LITTLE_ENDIAN);
 	flags_tree = proto_item_add_subtree(ft, ett_radiotap_flags);
@@ -1355,8 +1588,7 @@ dissect_radiotap_flags(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree,
 
 static void
 dissect_radiotap_rate(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree,
-	int offset, struct _radiotap_info *radiotap_info,
-	struct ieee_802_11_phdr *phdr)
+	int offset, struct ieee_802_11_phdr *phdr)
 {
 	guint32 rate;
 
@@ -1398,7 +1630,6 @@ dissect_radiotap_rate(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree,
 					    tvb, offset, 1, (float)rate / 2,
 					    "Data Rate: %.1f Mb/s",
 					    (float)rate / 2);
-		radiotap_info->rate = rate;
 		phdr->has_data_rate = TRUE;
 		phdr->data_rate = rate;
 	}
@@ -1407,7 +1638,7 @@ dissect_radiotap_rate(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree,
 static void
 dissect_radiotap_channel(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree,
 	int offset, guint8 rflags, gboolean have_rflags,
-	struct _radiotap_info *radiotap_info, struct ieee_802_11_phdr *phdr)
+	struct ieee_802_11_phdr *phdr)
 {
 	guint32     freq;
 	guint16     cflags;
@@ -1524,15 +1755,12 @@ dissect_radiotap_channel(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree
 				hf_radiotap_channel_flags,
 				ett_radiotap_channel_flags,
 				channel_flags, ENC_LITTLE_ENDIAN);
-		radiotap_info->freq = freq;
-		radiotap_info->flags = cflags;
 	}
 }
 
 static void
 dissect_radiotap_fhss(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree,
-	int offset, struct _radiotap_info *radiotap_info _U_,
-	struct ieee_802_11_phdr *phdr)
+	int offset, struct ieee_802_11_phdr *phdr)
 {
 	/*
 	 * Just in case we didn't have a Channel field or
@@ -1552,8 +1780,7 @@ dissect_radiotap_fhss(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree,
 
 static void
 dissect_radiotap_dbm_antsignal(tvbuff_t *tvb, packet_info *pinfo _U_,
-	proto_tree *tree, int offset, struct _radiotap_info *radiotap_info,
-	struct ieee_802_11_phdr *phdr)
+	proto_tree *tree, int offset, struct ieee_802_11_phdr *phdr)
 {
 	gint8 dbm = tvb_get_gint8(tvb, offset);
 
@@ -1561,14 +1788,12 @@ dissect_radiotap_dbm_antsignal(tvbuff_t *tvb, packet_info *pinfo _U_,
 	phdr->signal_dbm = dbm;
 	col_add_fstr(pinfo->cinfo, COL_RSSI, "%d dBm", dbm);
 	proto_tree_add_int(tree, hf_radiotap_dbm_antsignal, tvb, offset, 1, dbm);
-	radiotap_info->dbm_antsignal = dbm;
 
 }
 
 static void
 dissect_radiotap_dbm_antnoise(tvbuff_t *tvb, packet_info *pinfo _U_,
-	proto_tree *tree, int offset, struct _radiotap_info *radiotap_info,
-	struct ieee_802_11_phdr *phdr)
+	proto_tree *tree, int offset, struct ieee_802_11_phdr *phdr)
 {
 	gint dbm = tvb_get_gint8(tvb, offset);
 
@@ -1578,7 +1803,32 @@ dissect_radiotap_dbm_antnoise(tvbuff_t *tvb, packet_info *pinfo _U_,
 		proto_tree_add_int(tree, hf_radiotap_dbm_antnoise, tvb, offset,
 				1, dbm);
 	}
-	radiotap_info->dbm_antnoise = dbm;
+}
+
+static void
+dissect_radiotap_db_antsignal(tvbuff_t *tvb, packet_info *pinfo _U_,
+	proto_tree *tree, int offset, struct ieee_802_11_phdr *phdr)
+{
+	guint8 db = tvb_get_guint8(tvb, offset);
+
+	phdr->has_signal_db = TRUE;
+	phdr->signal_db = db;
+	col_add_fstr(pinfo->cinfo, COL_RSSI, "%u dB", db);
+	proto_tree_add_uint(tree, hf_radiotap_db_antsignal, tvb, offset, 1, db);
+}
+
+static void
+dissect_radiotap_db_antnoise(tvbuff_t *tvb, packet_info *pinfo _U_,
+	proto_tree *tree, int offset, struct ieee_802_11_phdr *phdr)
+{
+	guint db = tvb_get_guint8(tvb, offset);
+
+	phdr->has_noise_db = TRUE;
+	phdr->noise_db = db;
+	if (tree) {
+		proto_tree_add_uint(tree, hf_radiotap_db_antnoise, tvb, offset,
+				1, db);
+	}
 }
 
 static void
@@ -1609,7 +1859,7 @@ dissect_radiotap_rx_flags(tvbuff_t *tvb, packet_info *pinfo _U_,
 static void
 dissect_radiotap_xchannel(tvbuff_t *tvb, packet_info *pinfo _U_,
 	proto_tree *tree, int offset, guint8 rflags, gboolean have_rflags,
-	struct _radiotap_info *radiotap_info _U_, struct ieee_802_11_phdr *phdr)
+	struct ieee_802_11_phdr *phdr)
 {
 	guint32     xcflags = tvb_get_letohl(tvb, offset);
 	guint32     freq;
@@ -1762,8 +2012,7 @@ dissect_radiotap_xchannel(tvbuff_t *tvb, packet_info *pinfo _U_,
 
 static void
 dissect_radiotap_timestamp(tvbuff_t *tvb, packet_info *pinfo _U_,
-	proto_tree *tree, int offset, struct _radiotap_info *radiotap_info _U_,
-	struct ieee_802_11_phdr *phdr _U_)
+	proto_tree *tree, int offset, struct ieee_802_11_phdr *phdr _U_)
 {
 	proto_item *it_root;
 	proto_tree *ts_tree, *flg_tree;
@@ -1792,6 +2041,7 @@ static int
 dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* unused_data _U_)
 {
 	proto_tree *radiotap_tree     = NULL;
+	proto_item *length_item       = NULL;
 	proto_item *present_item      = NULL;
 	proto_tree *present_tree      = NULL;
 	proto_item *present_word_item = NULL;
@@ -1803,7 +2053,6 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 	guint8      version;
 	guint       length;
 	proto_item *rate_ti;
-	guint8      db;
 	gboolean    have_rflags       = FALSE;
 	guint8      rflags            = 0;
 	/* backward compat with bit 14 == fcs in header */
@@ -1813,10 +2062,16 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 	guint32     calc_fcs;
 	gint        err               = -ENOENT;
 	void       *data;
-	struct _radiotap_info              *radiotap_info;
-	static struct _radiotap_info        rtp_info_arr;
 	struct ieee80211_radiotap_iterator  iter;
 	struct ieee_802_11_phdr phdr;
+	guchar	 *bmap_start;
+	guint	  n_bitmaps;
+	guint	  i;
+	gboolean  rtap_ns;
+	gboolean  rtap_ns_next;
+	guint	  rtap_ns_offset;
+	guint	  rtap_ns_offset_next;
+	gboolean  zero_length_psdu = FALSE;
 
 	/* our non-standard overrides */
 	static struct radiotap_override overrides[] = {
@@ -1830,8 +2085,6 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 	if (!radiotap_bit14_fcs)
 		n_overrides--;
 
-	radiotap_info = &rtp_info_arr;
-
 	/* We don't have any 802.11 metadata yet. */
 	memset(&phdr, 0, sizeof(phdr));
 	phdr.fcs_len = -1;
@@ -1844,8 +2097,6 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 
 	version = tvb_get_guint8(tvb, 0);
 	length = tvb_get_letohs(tvb, 2);
-
-	radiotap_info->radiotap_length = length;
 
 	col_add_fstr(pinfo->cinfo, COL_INFO, "Radiotap Capture v%u, Length %u",
 		     version, length);
@@ -1861,8 +2112,19 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 				    tvb, 0, 1, version);
 		proto_tree_add_item(radiotap_tree, hf_radiotap_pad,
 				    tvb, 1, 1, ENC_LITTLE_ENDIAN);
-		proto_tree_add_uint(radiotap_tree, hf_radiotap_length,
-				    tvb, 2, 2, length);
+		length_item = proto_tree_add_uint(radiotap_tree, hf_radiotap_length,
+						  tvb, 2, 2, length);
+	}
+
+	/*
+	 * The length is the length of the entire radiotap header, so it
+	 * must be at least 8, for the version, padding, length, and first
+	 * presence flags word.
+	 */
+	if (length < 8) {
+		expert_add_info(pinfo, length_item,
+		    &ei_radiotap_invalid_header_length);
+		return tvb_captured_length(tvb);
 	}
 
 	data = tvb_memdup(wmem_packet_scope(), tvb, 0, length);
@@ -1877,65 +2139,64 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 	iter.overrides = overrides;
 	iter.n_overrides = n_overrides;
 
-	/* Add the "present flags" bitmaps. */
-	if (tree) {
-		guchar	 *bmap_start	      = (guchar *)data + 4;
-		guint	  n_bitmaps	      = (guint)(iter.this_arg - bmap_start) / 4;
-		guint	  i;
-		gboolean  rtap_ns;
-		gboolean  rtap_ns_next	      = TRUE;
-		guint	  rtap_ns_offset;
-		guint	  rtap_ns_offset_next = 0;
+	/*
+	 * Check the "present flags" bitmaps, and add them if we're
+	 * building a tree.
+	 */
+	bmap_start = (guchar *)data + 4;
+	n_bitmaps = (guint)(iter.this_arg - bmap_start) / 4;
+	rtap_ns_next = TRUE;
+	rtap_ns_offset_next = 0;
+	present_item = proto_tree_add_item(radiotap_tree,
+	    hf_radiotap_present, tvb, 4, n_bitmaps * 4, ENC_NA);
+	present_tree = proto_item_add_subtree(present_item,
+	    ett_radiotap_present);
 
-		present_item = proto_tree_add_item(radiotap_tree,
-		    hf_radiotap_present, tvb, 4, n_bitmaps * 4, ENC_NA);
-		present_tree = proto_item_add_subtree(present_item,
-		    ett_radiotap_present);
+	for (i = 0; i < n_bitmaps; i++) {
+		guint32 bmap = pletoh32(bmap_start + 4 * i);
 
-		for (i = 0; i < n_bitmaps; i++) {
-			guint32 bmap = pletoh32(bmap_start + 4 * i);
+		rtap_ns_offset = rtap_ns_offset_next;
+		rtap_ns_offset_next += 32;
 
-			rtap_ns_offset = rtap_ns_offset_next;
-			rtap_ns_offset_next += 32;
+		offset = 4 * i;
 
-			offset = 4 * i;
+		present_word_item =
+		    proto_tree_add_item(present_tree,
+		      hf_radiotap_present_word,
+		      tvb, offset + 4, 4, ENC_LITTLE_ENDIAN);
 
-			present_word_item =
-			    proto_tree_add_item(present_tree,
-			      hf_radiotap_present_word,
-			      tvb, offset + 4, 4, ENC_LITTLE_ENDIAN);
+		present_word_tree =
+		    proto_item_add_subtree(present_word_item,
+		      ett_radiotap_present_word);
 
-			present_word_tree =
-			    proto_item_add_subtree(present_word_item,
-			      ett_radiotap_present_word);
+		rtap_ns = rtap_ns_next;
 
-			rtap_ns = rtap_ns_next;
+		/* Evaluate what kind of namespaces will come next */
+		if (bmap & BIT(IEEE80211_RADIOTAP_RADIOTAP_NAMESPACE)) {
+			rtap_ns_next = TRUE;
+			rtap_ns_offset_next = 0;
+		}
+		if (bmap & BIT(IEEE80211_RADIOTAP_VENDOR_NAMESPACE))
+			rtap_ns_next = FALSE;
+		if ((bmap & (BIT(IEEE80211_RADIOTAP_RADIOTAP_NAMESPACE) |
+			     BIT(IEEE80211_RADIOTAP_VENDOR_NAMESPACE)))
+			== (BIT(IEEE80211_RADIOTAP_RADIOTAP_NAMESPACE) |
+			    BIT(IEEE80211_RADIOTAP_VENDOR_NAMESPACE))) {
+			expert_add_info_format(pinfo, present_word_item,
+			    &ei_radiotap_present,
+			    "Both radiotap and vendor namespace specified in bitmask word %u",
+			    i);
+			goto malformed;
+		}
 
-			/* Evaluate what kind of namespaces will come next */
-			if (bmap & BIT(IEEE80211_RADIOTAP_RADIOTAP_NAMESPACE)) {
-				rtap_ns_next = TRUE;
-				rtap_ns_offset_next = 0;
-			}
-			if (bmap & BIT(IEEE80211_RADIOTAP_VENDOR_NAMESPACE))
-				rtap_ns_next = FALSE;
-			if ((bmap & (BIT(IEEE80211_RADIOTAP_RADIOTAP_NAMESPACE) |
-				     BIT(IEEE80211_RADIOTAP_VENDOR_NAMESPACE)))
-				== (BIT(IEEE80211_RADIOTAP_RADIOTAP_NAMESPACE) |
-				    BIT(IEEE80211_RADIOTAP_VENDOR_NAMESPACE))) {
-				expert_add_info_format(pinfo, present_word_item,
-				    &ei_radiotap_present,
-				    "Both radiotap and vendor namespace specified in bitmask word %u",
-				    i);
-				goto malformed;
-			}
+		if (!rtap_ns)
+			goto always_bits;
 
-			if (!rtap_ns)
-				goto always_bits;
+		/* Currently, we don't know anything about bits >= 32 */
+		if (rtap_ns_offset)
+			goto always_bits;
 
-			/* Currently, we don't know anything about bits >= 32 */
-			if (rtap_ns_offset)
-				goto always_bits;
-
+		if (tree) {
 			proto_tree_add_item(present_word_tree,
 					    hf_radiotap_present_tsft, tvb,
 					    offset + 4, 4, ENC_LITTLE_ENDIAN);
@@ -2009,17 +2270,25 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 			proto_tree_add_item(present_word_tree,
 					    hf_radiotap_present_he_mu, tvb,
 					    offset + 4, 4, ENC_LITTLE_ENDIAN);
+			proto_tree_add_item(present_word_tree,
+					    hf_radiotap_present_0_length_psdu,
+					    tvb, offset + 4, 4, ENC_LITTLE_ENDIAN);
+			proto_tree_add_item(present_word_tree,
+					    hf_radiotap_present_l_sig, tvb,
+					    offset + 4, 4, ENC_LITTLE_ENDIAN);
 
 			ti = proto_tree_add_item(present_word_tree,
 					    hf_radiotap_present_reserved, tvb,
 					    offset + 4, 4, ENC_LITTLE_ENDIAN);
-			/* Check if Reserved/Not Defined is not "zero" */
-			if(bmap & IEEE80211_RADIOTAP_NOTDEFINED)
-			{
-				expert_add_info(pinfo, present_word_item,
-				    &ei_radiotap_present_reserved);
-			}
+		}
+		/* Check if Reserved/Not Defined is not "zero" */
+		if(bmap & IEEE80211_RADIOTAP_NOTDEFINED)
+		{
+			expert_add_info(pinfo, present_word_item,
+			    &ei_radiotap_present_reserved);
+		}
  always_bits:
+		if (tree) {
 			proto_tree_add_item(present_word_tree,
 					    hf_radiotap_present_rtap_ns, tvb,
 					    offset + 4, 4, ENC_LITTLE_ENDIAN);
@@ -2077,7 +2346,7 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 
 		case IEEE80211_RADIOTAP_TSFT:
 			dissect_radiotap_tsft(tvb, pinfo, radiotap_tree, offset,
-					radiotap_info, &phdr);
+					&phdr);
 			break;
 
 		case IEEE80211_RADIOTAP_FLAGS:
@@ -2088,28 +2357,27 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 
 		case IEEE80211_RADIOTAP_RATE:
 			dissect_radiotap_rate(tvb, pinfo, radiotap_tree, offset,
-					radiotap_info, &phdr);
+					&phdr);
 			break;
 
 		case IEEE80211_RADIOTAP_CHANNEL:
 			dissect_radiotap_channel(tvb, pinfo, radiotap_tree, offset,
-					rflags, have_rflags, radiotap_info,
-					&phdr);
+					rflags, have_rflags, &phdr);
 			break;
 
 		case IEEE80211_RADIOTAP_FHSS:
 			dissect_radiotap_fhss(tvb, pinfo, radiotap_tree, offset,
-					radiotap_info, &phdr);
+					&phdr);
 			break;
 
 		case IEEE80211_RADIOTAP_DBM_ANTSIGNAL:
 			dissect_radiotap_dbm_antsignal(tvb, pinfo, radiotap_tree,
-					offset, radiotap_info, &phdr);
+					offset, &phdr);
 			break;
 
 		case IEEE80211_RADIOTAP_DBM_ANTNOISE:
 			dissect_radiotap_dbm_antnoise(tvb, pinfo, radiotap_tree,
-					offset, radiotap_info, &phdr);
+					offset, &phdr);
 			break;
 
 		case IEEE80211_RADIOTAP_LOCK_QUALITY:
@@ -2143,18 +2411,13 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 			break;
 
 		case IEEE80211_RADIOTAP_DB_ANTSIGNAL:
-			db = tvb_get_guint8(tvb, offset);
-			col_add_fstr(pinfo->cinfo, COL_RSSI, "%u dB", db);
-			proto_tree_add_uint(radiotap_tree,
-							   hf_radiotap_db_antsignal,
-							   tvb, offset, 1, db);
+			dissect_radiotap_db_antsignal(tvb, pinfo, radiotap_tree,
+					offset, &phdr);
 			break;
 
 		case IEEE80211_RADIOTAP_DB_ANTNOISE:
-			db = tvb_get_guint8(tvb, offset);
-			proto_tree_add_uint(radiotap_tree,
-							   hf_radiotap_db_antnoise,
-							   tvb, offset, 1, db);
+			dissect_radiotap_db_antnoise(tvb, pinfo, radiotap_tree,
+					offset, &phdr);
 			break;
 
 		case IEEE80211_RADIOTAP_RX_FLAGS:
@@ -2166,7 +2429,7 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 		case IEEE80211_RADIOTAP_XCHANNEL:
 			dissect_radiotap_xchannel(tvb, pinfo, radiotap_tree,
 						offset, rflags, have_rflags,
-						radiotap_info, &phdr);
+						&phdr);
 			break;
 
 		case IEEE80211_RADIOTAP_MCS: {
@@ -2320,7 +2583,7 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 						hf_radiotap_datarate,
 						tvb, offset, 3, rate,
 						"Data Rate: %.1f Mb/s", rate);
-					PROTO_ITEM_SET_GENERATED(rate_ti);
+					proto_item_set_generated(rate_ti);
 				}
 			}
 			break;
@@ -2383,7 +2646,7 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 			guint	    nss		 = 0;
 			guint	    mcs		 = 0;
 			gboolean    can_calculate_rate;
-			guint	    i;
+			guint	    user;
 
 			/*
 			 * Start out assuming that we can calculate the rate;
@@ -2506,12 +2769,12 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 			phdr.phy_info.info_11ac.has_fec = TRUE;
 			phdr.phy_info.info_11ac.fec = tvb_get_guint8(tvb, offset + 8);
 
-			for(i=0; i<4; i++) {
-				mcs_nss = tvb_get_guint8(tvb, offset + 4 + i);
+			for (user = 0; user < 4; user++) {
+				mcs_nss = tvb_get_guint8(tvb, offset + 4 + user);
 				nss = (mcs_nss & IEEE80211_RADIOTAP_VHT_NSS);
 				mcs = (mcs_nss & IEEE80211_RADIOTAP_VHT_MCS) >> 4;
-				phdr.phy_info.info_11ac.mcs[i] = mcs;
-				phdr.phy_info.info_11ac.nss[i] = nss;
+				phdr.phy_info.info_11ac.mcs[user] = mcs;
+				phdr.phy_info.info_11ac.nss[user] = nss;
 
 				if (nss) {
 					/*
@@ -2525,11 +2788,11 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 					if (vht_tree) {
 						it = proto_tree_add_item(vht_tree, hf_radiotap_vht_user,
 							tvb, offset + 4, 5, ENC_NA);
-						proto_item_append_text(it, " %d: MCS %u", i, mcs);
+						proto_item_append_text(it, " %d: MCS %u", user, mcs);
 						user_tree = proto_item_add_subtree(it, ett_radiotap_vht_user);
 
-						it = proto_tree_add_item(user_tree, hf_radiotap_vht_mcs[i],
-							tvb, offset + 4 + i, 1,
+						it = proto_tree_add_item(user_tree, hf_radiotap_vht_mcs[user],
+							tvb, offset + 4 + user, 1,
 							ENC_LITTLE_ENDIAN);
 						if (mcs > MAX_MCS_VHT_INDEX) {
 							proto_item_append_text(it, " (invalid)");
@@ -2539,8 +2802,8 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 								ieee80211_vhtinfo[mcs].coding_rate);
 						}
 
-						proto_tree_add_item(user_tree, hf_radiotap_vht_nss[i],
-							tvb, offset + 4 + i, 1, ENC_LITTLE_ENDIAN);
+						proto_tree_add_item(user_tree, hf_radiotap_vht_nss[user],
+							tvb, offset + 4 + user, 1, ENC_LITTLE_ENDIAN);
 						if (known & IEEE80211_RADIOTAP_VHT_HAVE_STBC) {
 							guint nsts;
 							proto_item *nsts_ti;
@@ -2549,11 +2812,11 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 								nsts = 2 * nss;
 							else
 								nsts = nss;
-							nsts_ti = proto_tree_add_uint(user_tree, hf_radiotap_vht_nsts[i],
-								tvb, offset + 4 + i, 1, nsts);
-							PROTO_ITEM_SET_GENERATED(nsts_ti);
+							nsts_ti = proto_tree_add_uint(user_tree, hf_radiotap_vht_nsts[user],
+								tvb, offset + 4 + user, 1, nsts);
+							proto_item_set_generated(nsts_ti);
 						}
-						proto_tree_add_item(user_tree, hf_radiotap_vht_coding[i],
+						proto_tree_add_item(user_tree, hf_radiotap_vht_coding[user],
 							tvb, offset + 8, 1,ENC_LITTLE_ENDIAN);
 					}
 
@@ -2562,10 +2825,10 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 						float rate = ieee80211_vhtinfo[mcs].rates[bandwidth][gi_length] * nss;
 						if (rate != 0.0f ) {
 							rate_ti = proto_tree_add_float_format(user_tree,
-									hf_radiotap_vht_datarate[i],
+									hf_radiotap_vht_datarate[user],
 									tvb, offset, 12, rate,
 									"Data Rate: %.1f Mb/s", rate);
-							PROTO_ITEM_SET_GENERATED(rate_ti);
+							proto_item_set_generated(rate_ti);
 							if (ieee80211_vhtvalid[mcs].valid[bandwidth][nss-1] == FALSE)
 								expert_add_info(pinfo, rate_ti, &ei_radiotap_invalid_data_rate);
 
@@ -2595,7 +2858,7 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 		}
 		case IEEE80211_RADIOTAP_TIMESTAMP: {
 			dissect_radiotap_timestamp(tvb, pinfo, radiotap_tree,
-					offset, radiotap_info, &phdr);
+					offset, &phdr);
 			break;
 		}
 		case IEEE80211_RADIOTAP_HE:
@@ -2603,6 +2866,13 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 			break;
 		case IEEE80211_RADIOTAP_HE_MU:
 			dissect_radiotap_he_mu_info(tvb, pinfo, radiotap_tree, offset);
+			break;
+		case IEEE80211_RADIOTAP_0_LENGTH_PSDU:
+			dissect_radiotap_0_length_psdu(tvb, pinfo, radiotap_tree, offset, &phdr);
+			zero_length_psdu = TRUE;
+			break;
+		case IEEE80211_RADIOTAP_L_SIG:
+			dissect_radiotap_l_sig(tvb, pinfo, radiotap_tree, offset);
 			break;
 		}
 	}
@@ -2612,6 +2882,13 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 		    &ei_radiotap_data_past_header);
  malformed:
 		proto_item_append_text(ti, " (malformed)");
+	}
+
+	/*
+	 * Is there any more there?
+	 */
+	if (zero_length_psdu) {
+		return tvb_captured_length(tvb);
 	}
 
  hand_off_to_80211:
@@ -2650,7 +2927,7 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 							   hf_radiotap_fcs_bad,
 							   tvb, hdr_fcs_offset,
 							   4, TRUE);
-				PROTO_ITEM_SET_HIDDEN(hidden_item);
+				proto_item_set_hidden(hidden_item);
 			}
 		} else {
 			proto_item_append_text(hdr_fcs_ti,
@@ -2662,7 +2939,6 @@ dissect_radiotap(tvbuff_t * tvb, packet_info * pinfo, proto_tree * tree, void* u
 	call_dissector_with_data(ieee80211_radio_handle, next_tvb, pinfo,
 	    tree, &phdr);
 
-	tap_queue_packet(radiotap_tap, pinfo, radiotap_info);
 	return tvb_captured_length(tvb);
 }
 
@@ -2812,6 +3088,16 @@ void proto_register_radiotap(void)
 		 {"HE-MU information", "radiotap.present.he_mu",
 		  FT_BOOLEAN, 32, TFS(&tfs_present_absent), RADIOTAP_MASK(HE_MU),
 		  "Specifies if the HE field is present", HFILL}},
+
+		{&hf_radiotap_present_0_length_psdu,
+		 {"0 Length PSDU", "radiotap.present.0_length.psdu",
+		   FT_BOOLEAN, 32, TFS(&tfs_present_absent), RADIOTAP_MASK(0_LENGTH_PSDU),
+		   "Specifies whether or not the 0-Length PSDU field is present", HFILL}},
+
+		{&hf_radiotap_present_l_sig,
+		 {"L-SIG", "radiotap.present.l_sig",
+		  FT_BOOLEAN, 32, TFS(&tfs_present_absent), RADIOTAP_MASK(L_SIG),
+		  "Specifies whther or not the L-SIG field is present", HFILL}},
 
 		{&hf_radiotap_present_reserved,
 		 {"Reserved", "radiotap.present.reserved",
@@ -4009,45 +4295,55 @@ void proto_register_radiotap(void)
 		  FT_BOOLEAN, 16, TFS(&tfs_known_unknown),
 		  IEEE80211_RADIOTAP_HE_MU_SIG_B_DCM_KNOWN, NULL, HFILL}},
 
-		{&hf_radiotap_he_mu_reserved_f1_b7,
-		 {"Reserved", "radiotap.he_mu.reserved_f1_b7",
+		{&hf_radiotap_he_mu_chan2_center_26_tone_ru_bit_known,
+		 {"Channel2 center 26-tone RU bit known", "radiotap.he_mu.chan2_center_26_tone_ru_bit_known",
+		  FT_BOOLEAN, 16, TFS(&tfs_known_unknown),
+		  IEEE80211_RADIOTAP_HE_MU_CHAN2_CENTER_26_TONE_RU_BIT_KNOWN, NULL, HFILL}},
+
+		{&hf_radiotap_he_mu_chan2_center_26_tone_ru_bit_unknown,
+		 {"Channel2 center 26-tone RU bit known", "radiotap.he_mu.chan2_center_26_tone_ru_bit_unknown",
+		  FT_UINT16, BASE_CUSTOM, CF_FUNC(not_captured_custom),
+		  IEEE80211_RADIOTAP_HE_MU_CHAN2_CENTER_26_TONE_RU_BIT_KNOWN, NULL, HFILL}},
+
+		{&hf_radiotap_he_mu_chan1_rus_known,
+		 {"Channel 1 RUs known", "radiotap.he_mu.chan1_rus_known",
+		  FT_BOOLEAN, 16, TFS(&tfs_known_unknown),
+		  IEEE80211_RADIOTAP_HE_MU_CHAN1_RUS_KNOWN, NULL, HFILL}},
+
+		{&hf_radiotap_he_mu_chan1_rus_unknown,
+		 {"Channel 1 RUs unknown", "radiotap.he_mu.chan1_rus_unknown",
+		  FT_UINT16, BASE_CUSTOM, CF_FUNC(not_captured_custom),
+		  IEEE80211_RADIOTAP_HE_MU_CHAN1_RUS_KNOWN, NULL, HFILL}},
+
+		{&hf_radiotap_he_mu_chan2_rus_known,
+		 {"Channel 2 RUs known", "radiotap.he_mu.chan2_rus_known",
+		  FT_BOOLEAN, 16, TFS(&tfs_known_unknown),
+		  IEEE80211_RADIOTAP_HE_MU_CHAN2_RUS_KNOWN, NULL, HFILL}},
+
+		{&hf_radiotap_he_mu_chan2_rus_unknown,
+		 {"Channel 2 RUs unknown", "radiotap.he_mu.chan2_rus_unknown",
+		  FT_BOOLEAN, 16, TFS(&tfs_known_unknown),
+		  IEEE80211_RADIOTAP_HE_MU_CHAN2_RUS_KNOWN, NULL, HFILL}},
+
+		{&hf_radiotap_he_mu_reserved_f1_b10_b11,
+		 {"Reserved", "radiotap.he_mu.reserved_f1_b10_b11",
 		  FT_UINT16, BASE_HEX, NULL,
-		  IEEE80211_RADIOTAP_HE_MU_RESERVED_F1_B7, NULL, HFILL}},
+		  IEEE80211_RADIOTAP_HE_MU_RESERVED_F1_B10_B11, NULL, HFILL}},
 
-		{&hf_radiotap_he_mu_ru_0_known,
-		 {"RU[0] known", "radiotap.he_mu.ru_0_known",
+		{&hf_radiotap_he_mu_chan1_center_26_tone_ru_bit_known,
+		 {"Channel1 center 26-tone RU bit known", "radiotap.he_mu.chan1_center_26_tone_ru_bit_known",
 		  FT_BOOLEAN, 16, TFS(&tfs_known_unknown),
-		  IEEE80211_RADIOTAP_HE_MU_RU_0_KNOWN, NULL, HFILL}},
+		  IEEE80211_RADIOTAP_HE_MU_CHAN1_CENTER_26_TONE_RU_BIT_KNOWN, NULL, HFILL}},
 
-		{&hf_radiotap_he_mu_ru_1_known,
-		 {"RU[1] known", "radiotap.he_mu.ru_1_known",
-		  FT_BOOLEAN, 16, TFS(&tfs_known_unknown),
-		  IEEE80211_RADIOTAP_HE_MU_RU_1_KNOWN, NULL, HFILL}},
+		{&hf_radiotap_he_mu_chan1_center_26_tone_ru_bit_unknown,
+		 {"Channel1 center 26-tone RU bit known", "radiotap.he_mu.chan1_center_26_tone_ru_bit_unknown",
+		  FT_UINT16, BASE_CUSTOM, CF_FUNC(not_captured_custom),
+		  IEEE80211_RADIOTAP_HE_MU_CHAN1_CENTER_26_TONE_RU_BIT_KNOWN, NULL, HFILL}},
 
-		{&hf_radiotap_he_mu_ru_2_known,
-		 {"RU[2] known", "radiotap.he_mu.ru_2_known",
-		  FT_BOOLEAN, 16, TFS(&tfs_known_unknown),
-		  IEEE80211_RADIOTAP_HE_MU_RU_2_KNOWN, NULL, HFILL}},
-
-		{&hf_radiotap_he_mu_ru_3_known,
-		 {"RU[3] known", "radiotap.he_mu.ru_3_known",
-		  FT_BOOLEAN, 16, TFS(&tfs_known_unknown),
-		  IEEE80211_RADIOTAP_HE_MU_RU_3_KNOWN, NULL, HFILL}},
-
-		{&hf_radiotap_he_mu_center_26_tone_ru_bit_known,
-		 {"Center 26-tone RU bit known", "radiotap.he_mu.center_26_tone_ru_bit_known",
-		  FT_BOOLEAN, 16, TFS(&tfs_known_unknown),
-		  IEEE80211_RADIOTAP_HE_MU_CENTER_26_TONE_RU_BIT_KNOWN, NULL, HFILL}},
-
-		{&hf_radiotap_he_mu_center_26_tone_ru_value,
-		 {"Center 26-tone RU value", "radiotap.he_mu.center_26_tone_ru_value",
+		{&hf_radiotap_he_mu_chan1_center_26_tone_ru_value,
+		 {"Channel1 center 26-tone RU value", "radiotap.he_mu.chan1_center_26_tone_ru_value",
 		  FT_UINT16, BASE_HEX, NULL,
-		  IEEE80211_RADIOTAP_HE_MU_CENTER_26_TONE_RU_VALUE, NULL, HFILL}},
-
-		{&hf_radiotap_he_mu_sig_b_compression_known,
-		 {"SIG-B Compression known", "radiotap.he_mu.sig_b_compression_known",
-		  FT_BOOLEAN, 16, TFS(&tfs_known_unknown),
-		  IEEE80211_RADIOTAP_HE_MU_SIG_B_COMPRESSION_KNOWN, NULL, HFILL}},
+		  IEEE80211_RADIOTAP_HE_MU_CHAN1_CENTER_26_TONE_RU_VALUE, NULL, HFILL}},
 
 		{&hf_radiotap_he_mu_sig_b_syms_mu_mimo_users_known,
 		 {"# of HE-SIG-B Symbols/MU-MINO users known",
@@ -4085,6 +4381,16 @@ void proto_register_radiotap(void)
 		  IEEE80211_RADIOTAP_HE_MU_SIG_B_COMPRESSION_FROM_SIG_A,
 		  NULL, HFILL}},
 
+		{&hf_radiotap_he_mu_sig_b_compression_known,
+		 {"SIG-B compression known", "radiotap.he_mu.sig_b_compression_known",
+		  FT_BOOLEAN, 16, TFS(&tfs_known_unknown),
+		  IEEE80211_RADIOTAP_HE_MU_SIG_B_COMPRESSION_KNOWN, NULL, HFILL}},
+
+		{&hf_radiotap_he_mu_sig_b_compression_unknown,
+		 {"SIG-B compression unknown", "radiotap.he_mu.sig_b_compression_unknown",
+		  FT_UINT16, BASE_CUSTOM, CF_FUNC(not_captured_custom),
+		  IEEE80211_RADIOTAP_HE_MU_SIG_B_COMPRESSION_FROM_SIG_A, NULL, HFILL}},
+
 		{&hf_radiotap_he_mu_sig_b_syms_mu_mimo_users,
 		 {"# of HE-SIG-B Symbols or # of MU-MIMO Users",
 		  "radiotap.he_mu.sig_b_syms_or_mu_mimo_users",
@@ -4114,52 +4420,141 @@ void proto_register_radiotap(void)
 		  "radiotap.he_mu.preamble_puncturing_known",
 		  FT_BOOLEAN, 16, TFS(&tfs_known_unknown),
 		  IEEE80211_RADIOTAP_HE_MU_PREAMBLE_PUNCTURING_KNOWN, NULL, HFILL}},
-		{&hf_radiotap_he_mu_reserved_f2_b11_b15,
-		 {"Reserved", "radiotap.he_mu.reserved_f2_b11_b15",
+
+		{&hf_radiotap_he_mu_chan2_center_26_tone_ru_value,
+		 {"Chan2 Center 26 Tone RU Value",
+		  "radiotap.he_mu.chan2_center_26_tone_ru_value",
 		  FT_UINT16, BASE_HEX, NULL,
-		  IEEE80211_RADIOTAP_HE_MU_RESERVED_F2_B11_B15, NULL, HFILL}},
+		  IEEE80211_RADIOTAP_HE_MU_CHAN2_CENTER_26_TONE_RU_VALUE,
+		  NULL, HFILL }},
+
+		{&hf_radiotap_he_mu_reserved_f2_b12_b15,
+		 {"Reserved", "radiotap.he_mu.reserved_f2_b12_b15",
+		  FT_UINT16, BASE_HEX, NULL,
+		  IEEE80211_RADIOTAP_HE_MU_RESERVED_F2_B12_B15, NULL, HFILL}},
 
 		{&hf_radiotap_he_mu_info_flags_2,
 		 {"HE-MU Flags 2", "radiotap.he_mu.flags_2",
 		  FT_UINT16, BASE_HEX, NULL, 0x0,
 		  "Flags 2 of the HE-MU Info field", HFILL}},
 
-		{&hf_radiotap_he_mu_ru_0,
-		 {"RU[0] assignment index", "radiotap.he_mu.ru_0_index",
+		{&hf_radiotap_he_mu_chan1_rus_0,
+		 {"Chan1 RU[0] index", "radiotap.he_mu.chan1_rus_0_index",
 		  FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
 
-		{&hf_radiotap_he_mu_ru_0_unknown,
-		 {"RU[0] assignment index unknown",
-		  "radiotap.he_mu.ru_0_index_unknown",
+		{&hf_radiotap_he_mu_chan1_rus_0_unknown,
+		 {"Chan1 RU[0] index unknown",
+		  "radiotap.he_mu.chan1_rus_0_index_unknown",
+		  FT_UINT8, BASE_CUSTOM, CF_FUNC(not_captured_custom),
+		  0x0, NULL, HFILL}},
+
+		{&hf_radiotap_he_mu_chan1_rus_1,
+		 {"Chan1 RU[1] index", "radiotap.he_mu.chan1_rus_1_index",
 		  FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
 
-		{&hf_radiotap_he_mu_ru_1,
-		 {"RU[2] assignment index", "radiotap.he_mu.ru_1_index",
+		{&hf_radiotap_he_mu_chan1_rus_1_unknown,
+		 {"Chan1 RU[1] index unknown",
+		  "radiotap.he_mu.chan1_rus_1_index_unknown",
+		  FT_UINT8, BASE_CUSTOM, CF_FUNC(not_captured_custom),
+		  0x0, NULL, HFILL}},
+
+		{&hf_radiotap_he_mu_chan1_rus_2,
+		 {"Chan1 RU[2] index", "radiotap.he_mu.chan1_rus_2_index",
 		  FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
 
-		{&hf_radiotap_he_mu_ru_1_unknown,
-		 {"RU[2] assignment index unknown",
-		  "radiotap.he_mu.ru_1_index_unknown",
+		{&hf_radiotap_he_mu_chan1_rus_2_unknown,
+		 {"Chan1 RU[2] index unknown",
+		  "radiotap.he_mu.chan1_rus_2_index_unknown",
+		  FT_UINT8, BASE_CUSTOM, CF_FUNC(not_captured_custom),
+		  0x0, NULL, HFILL}},
+
+		{&hf_radiotap_he_mu_chan1_rus_3,
+		 {"Chan1 RU[3] index", "radiotap.he_mu.chan1_rus_3_index",
 		  FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
 
-		{&hf_radiotap_he_mu_ru_2,
-		 {"RU[2] assignment index", "radiotap.he_mu.ru_2_index",
+		{&hf_radiotap_he_mu_chan1_rus_3_unknown,
+		 {"Chan1 RU[3] index unknown",
+		  "radiotap.he_mu.chan1_rus_3_index_unknown",
+		  FT_UINT8, BASE_CUSTOM, CF_FUNC(not_captured_custom),
+		  0x0, NULL, HFILL}},
+
+		{&hf_radiotap_he_mu_chan2_rus_0,
+		 {"Chan2 RU[0] index", "radiotap.he_mu.chan2_rus_0_index",
 		  FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
 
-		{&hf_radiotap_he_mu_ru_2_unknown,
-		 {"RU[2] assignment index unknown",
-		  "radiotap.he_mu.ru_2_index_unknown",
+		{&hf_radiotap_he_mu_chan2_rus_0_unknown,
+		 {"Chan2 RU[0] index unknown",
+		  "radiotap.he_mu.chan2_rus_0_index_unknown",
+		  FT_UINT8, BASE_CUSTOM,
+		  CF_FUNC(not_captured_custom), 0x0, NULL, HFILL}},
+
+		{&hf_radiotap_he_mu_chan2_rus_1,
+		 {"Chan2 RU[1] index", "radiotap.he_mu.chan2_rus_1_index",
 		  FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
 
-		{&hf_radiotap_he_mu_ru_3,
-		 {"RU[3] assignment index", "radiotap.he_mu.ru_3_index",
+		{&hf_radiotap_he_mu_chan2_rus_1_unknown,
+		 {"Chan2 RU[1] index unknown",
+		  "radiotap.he_mu.chan2_rus_1_index_unknown",
+		  FT_UINT8, BASE_CUSTOM,
+		  CF_FUNC(not_captured_custom), 0x0, NULL, HFILL}},
+
+		{&hf_radiotap_he_mu_chan2_rus_2,
+		 {"Chan2 RU[2] index", "radiotap.he_mu.chan2_rus_2_index",
 		  FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
 
-		{&hf_radiotap_he_mu_ru_3_unknown,
-		 {"RU[3] assignment index unknown",
-		  "radiotap.he_mu.ru_3_index_unknown",
+		{&hf_radiotap_he_mu_chan2_rus_2_unknown,
+		 {"Chan2 RU[2] index unknown",
+		  "radiotap.he_mu.chan2_rus_2_index_unknown",
+		  FT_UINT8, BASE_CUSTOM,
+		  CF_FUNC(not_captured_custom), 0x0, NULL, HFILL}},
+
+		{&hf_radiotap_he_mu_chan2_rus_3,
+		 {"Chan2 RU[3] index", "radiotap.he_mu.chan2_rus_3_index",
 		  FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
 
+		{&hf_radiotap_he_mu_chan2_rus_3_unknown,
+		 {"Chan2 RU[3] index unknown",
+		  "radiotap.he_mu.chan2_rus_3_index_unknown",
+		  FT_UINT8, BASE_CUSTOM,
+		  CF_FUNC(not_captured_custom), 0x0, NULL, HFILL}},
+
+		{&hf_radiotap_0_length_psdu_type,
+		 {"Type", "radiotap.0_len_psdu.type",
+		  FT_UINT8, BASE_HEX|BASE_RANGE_STRING,
+		  RVALS(zero_length_psdu_rsvals), 0x0, NULL, HFILL}},
+
+		{&hf_radiotap_l_sig_data_1,
+		 {"Data1", "radiotap.l_sig.data1",
+		  FT_UINT16, BASE_HEX, NULL, 0, NULL, HFILL}},
+
+		{&hf_radiotap_l_sig_rate_known,
+		 {"rate known", "radiotap.l_sig.rate_known",
+		  FT_BOOLEAN, 16, NULL,
+		  IEEE80211_RADIOTAP_L_SIG_RATE_KNOWN, NULL, HFILL}},
+
+		{&hf_radiotap_l_sig_length_known,
+		 {"length known", "radiotap.l_sig.length_known",
+		  FT_BOOLEAN, 16, NULL,
+		  IEEE80211_RADIOTAP_L_SIG_LENGTH_KNOWN, NULL, HFILL}},
+
+		{&hf_radiotap_l_sig_reserved,
+		 {"reserved", "radiotap.l_sig.reserved",
+		  FT_UINT16, BASE_HEX, NULL,
+		  IEEE80211_RADIOTAP_L_SIG_RESERVED_MASK, NULL, HFILL}},
+
+		{&hf_radiotap_l_sig_data_2,
+		 {"Data2", "radiotap.l_sig.data2",
+		  FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL}},
+
+		{&hf_radiotap_l_sig_rate,
+		 {"rate", "radiotap.l_sig.rate",
+		  FT_UINT16, BASE_DEC, NULL,
+		  IEEE80211_RADIOTAP_L_SIG_RATE_MASK, NULL, HFILL}},
+
+		{&hf_radiotap_l_sig_length,
+		 {"length", "radiotap.l_sig.rate",
+		  FT_UINT16, BASE_DEC, NULL,
+		  IEEE80211_RADIOTAP_L_SIG_LENGTH_MASK, NULL, HFILL}},
 	};
 	static gint *ett[] = {
 		&ett_radiotap,
@@ -4189,13 +4584,18 @@ void proto_register_radiotap(void)
 		&ett_radiotap_he_mu_info,
 		&ett_radiotap_he_mu_info_flags_1,
 		&ett_radiotap_he_mu_info_flags_2,
+		&ett_radiotap_he_mu_chan_rus,
+		&ett_radiotap_0_length_psdu,
+		&ett_radiotap_l_sig,
+		&ett_radiotap_l_sig_data_1,
+		&ett_radiotap_l_sig_data_2
 	};
 	static ei_register_info ei[] = {
+		{ &ei_radiotap_invalid_header_length, { "radiotap.length.invalid", PI_MALFORMED, PI_ERROR, "The radiotap header length is less than 8 bytes", EXPFILL }},
 		{ &ei_radiotap_present, { "radiotap.present.radiotap_and_vendor", PI_MALFORMED, PI_ERROR, "Both radiotap and vendor namespace specified in bitmask word", EXPFILL }},
 		{ &ei_radiotap_present_reserved, { "radiotap.present.reserved.unknown", PI_UNDECODED, PI_NOTE, "Unknown Radiotap fields, code not implemented, Please check radiotap documentation, Contact Wireshark developers if you want this supported", EXPFILL }},
 		{ &ei_radiotap_data_past_header, { "radiotap.data_past_header", PI_MALFORMED, PI_ERROR, "Radiotap data goes past the end of the radiotap header", EXPFILL }},
 		{ &ei_radiotap_invalid_data_rate, { "radiotap.vht.datarate.invalid", PI_PROTOCOL, PI_WARN, "Data rate invalid", EXPFILL }},
-		{ &ei_radiotap_he_mu_upgrade_needed, { "radiotap.he_mu_upgrade_needed", PI_PROTOCOL, PI_WARN, "A newer version of wireshark is needed to dissect the HE_MU header", EXPFILL }},
 	};
 
 	module_t *radiotap_module;
@@ -4208,8 +4608,6 @@ void proto_register_radiotap(void)
 	expert_radiotap = expert_register_protocol(proto_radiotap);
 	expert_register_field_array(expert_radiotap, ei, array_length(ei));
 	register_dissector("radiotap", dissect_radiotap, proto_radiotap);
-
-	radiotap_tap = register_tap("radiotap");
 
 	radiotap_module = prefs_register_protocol(proto_radiotap, NULL);
 	prefs_register_bool_preference(radiotap_module, "bit14_fcs_in_header",
@@ -4224,6 +4622,13 @@ void proto_register_radiotap(void)
 				       "Some generators use rates with bit 7 set to indicate an MCS, e.g. BSD. "
 					   "others (Linux, AirPcap) do not.",
 				       &radiotap_interpret_high_rates_as_mcs);
+
+	prefs_register_enum_preference(radiotap_module, "fcs_handling",
+				       "Whether and how to override the FCS bit",
+				       "Whether to use the FCS bit, assume the FCS is always present, "
+					   "or assume the FCS is never present.",
+				       &radiotap_fcs_handling,
+				       fcs_handling, FALSE);
 }
 
 void proto_reg_handoff_radiotap(void)
@@ -4239,6 +4644,14 @@ void proto_reg_handoff_radiotap(void)
 	dissector_add_uint("wtap_encap", WTAP_ENCAP_IEEE_802_11_RADIOTAP,
 			   radiotap_handle);
 
+	/*
+	 * The radiotap and 802.11 headers aren't stripped off for
+	 * monitor-mode packets in Linux cooked captures, so dissect
+	 * those frames.
+	 */
+	dissector_add_uint("sll.hatype", ARPHRD_IEEE80211_RADIOTAP,
+			   radiotap_handle);
+
 	radiotap_cap_handle = create_capture_dissector_handle(capture_radiotap, proto_radiotap);
 	capture_dissector_add_uint("wtap_encap", WTAP_ENCAP_IEEE_802_11_RADIOTAP, radiotap_cap_handle);
 
@@ -4247,7 +4660,7 @@ void proto_reg_handoff_radiotap(void)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

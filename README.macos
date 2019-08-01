@@ -8,7 +8,7 @@ available on the install DVD; Xcode 4 is available for download from
 developer.apple.com and, for Lion and later releases, from the Mac App
 Store.  See
 
-	http://guide.macports.org/chunked/installing.xcode.html
+	https://guide.macports.org/#installing.xcode
 
 for details.  For Xcode 4, you will need to install the command-line
 tools; select Preferences from the Xcode menu, select Downloads in the
@@ -18,7 +18,7 @@ You must also have GLib and, if you want to build Wireshark as well as
 TShark, you must have also Qt installed.  You can download precompiled
 Qt packages and source code from
 
-	https://www.qt.io/download-open-source/
+	https://www.qt.io/download
 
 or use the tools/macos-setup.sh script described below.
 
@@ -73,6 +73,22 @@ directory;
 	cd build
 	cmake ..
 	make
+
+It is also possible to use the Xcode IDE to build and debug Wireshark
+using cmake's Xcode generator. Create a separate build directory, as 
+described above and run cmake with the "-G Xcode" argument to create 
+a Xcode project file in the current directory.
+
+	cmake -G Xcode ..
+
+ 1. Double click Wireshark.xcodeproj 
+
+ 2. Choose to create schemes manually
+
+ 3. Create a scheme for the ALL_BUILD target
+
+ 4. Edit the scheme, go to the run configuration and select Wireshark.app 
+  as executable
 
 If you upgrade the major release of macOS on which you are building
 Wireshark, we advise that, before you do any builds after the upgrade,

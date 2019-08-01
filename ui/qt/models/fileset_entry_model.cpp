@@ -28,9 +28,8 @@ QModelIndex FilesetEntryModel::index(int row, int column, const QModelIndex &) c
     return createIndex(row, column, const_cast<fileset_entry *>(entries_.at(row)));
 }
 
-int FilesetEntryModel::rowCount(const QModelIndex &parent) const
+int FilesetEntryModel::rowCount(const QModelIndex &) const
 {
-    Q_UNUSED(parent)
     return entries_.count();
 }
 
@@ -50,7 +49,7 @@ QVariant FilesetEntryModel::data(const QModelIndex &index, int role) const
             if(created.length() < 1) {
                 /* if this file doesn't follow the file set pattern, */
                 /* use the creation time of that file if available */
-                /* http://en.wikipedia.org/wiki/ISO_8601 */
+                /* https://en.wikipedia.org/wiki/ISO_8601 */
                 /*
                  * macOS provides 0 if the file system doesn't support the
                  * creation time; FreeBSD provides -1.

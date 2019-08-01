@@ -39,7 +39,7 @@
 #include <wsutil/strtoi.h>
 #include <wsutil/wsgcrypt.h>
 
-#include "packet-ssl.h"
+#include "packet-tls.h"
 
 #include "packet-isup.h"
 #include "packet-e164.h"
@@ -224,6 +224,7 @@ static gint hf_sip_p_acc_net_i_ucid_3gpp  = -1;
 static gint hf_sip_service_priority = -1;
 static gint hf_sip_icid_value = -1;
 static gint hf_sip_icid_gen_addr = -1;
+static gint hf_sip_call_id_gen = -1;
 
 /* Initialize the subtree pointers */
 static gint ett_sip                       = -1;
@@ -899,6 +900,9 @@ static gboolean sip_retrans_the_same_sport = TRUE;
 /* whether we hold off tracking RTP conversations until an SDP answer is received */
 static gboolean sip_delay_sdp_changes = FALSE;
 
+/* Hide the generated Call IDs or not */
+static gboolean sip_hide_generatd_call_ids = FALSE;
+
 /* Extension header subdissectors */
 static dissector_table_t ext_hdr_subdissector_table;
 
@@ -1523,7 +1527,7 @@ dfilter_store_sip_from_addr(tvbuff_t *tvb,proto_tree *tree,guint parameter_offse
     proto_item *pi;
 
     pi = proto_tree_add_item(tree, hf_sip_from_addr, tvb, parameter_offset, parameter_len, ENC_UTF_8|ENC_NA);
-    PROTO_ITEM_SET_GENERATED(pi);
+    proto_item_set_generated(pi);
 }
 
 static proto_item *
@@ -2803,7 +2807,7 @@ static void dissect_sip_via_header(tvbuff_t *tvb, proto_tree *tree, gint start_o
                             ti = proto_tree_add_uint(tree, hf_sip_via_oc_val, tvb,
                                 parameter_name_end + 1, current_offset - parameter_name_end - 1,
                                 (guint32)strtoul(value, NULL, 10));
-                            PROTO_ITEM_SET_GENERATED(ti);
+                            proto_item_set_generated(ti);
                         }
                         else if (g_ascii_strcasecmp(param_name, "oc-seq") == 0) {
                             proto_item *ti;
@@ -2820,7 +2824,7 @@ static void dissect_sip_via_header(tvbuff_t *tvb, proto_tree *tree, gint start_o
                                 ts.nsecs = (guint32)strtoul(value, NULL, 10) * 1000;
                                 ti = proto_tree_add_time(tree, hf_sip_oc_seq_timestamp, tvb,
                                     parameter_name_end + 1, current_offset - parameter_name_end - 1, &ts);
-                                PROTO_ITEM_SET_GENERATED(ti);
+                                proto_item_set_generated(ti);
                             }
                         }
                     }
@@ -2914,7 +2918,7 @@ static void dissect_sip_session_id_header(tvbuff_t *tvb, proto_tree *tree, gint 
                  */
                 e_guid_t guid;
 
-                PROTO_ITEM_SET_HIDDEN(pi);
+                proto_item_set_hidden(pi);
                 guid.data1 = (bytes->data[0] << 24) | (bytes->data[1] << 16) |
                              (bytes->data[2] <<  8) |  bytes->data[3];
                 guid.data2 = (bytes->data[4] <<  8) |  bytes->data[5];
@@ -3338,7 +3342,7 @@ dissect_sip_common(tvbuff_t *tvb, int offset, int remaining_length, packet_info 
     char    cseq_method[MAX_CSEQ_METHOD_SIZE] = "";
     char    call_id[MAX_CALL_ID_SIZE] = "";
     gchar  *media_type_str_lower_case = NULL;
-    http_message_info_t message_info = { HTTP_OTHERS, NULL };
+    http_message_info_t message_info = { SIP_DATA, NULL, NULL, NULL };
     char   *content_encoding_parameter_str = NULL;
     guint   resend_for_packet = 0;
     guint   request_for_response = 0;
@@ -3404,9 +3408,11 @@ dissect_sip_common(tvbuff_t *tvb, int offset, int remaining_length, packet_info 
          * Do header desegmentation if we've been told to,
          * and do body desegmentation if we've been told to and
          * we find a Content-Length header.
+         *
+         * RFC 6594, Section 20.14. requires Content-Length for TCP.
          */
         if (!req_resp_hdrs_do_reassembly(tvb, offset, pinfo,
-            sip_desegment_headers, sip_desegment_body)) {
+            sip_desegment_headers, sip_desegment_body, FALSE)) {
             /*
              * More data needed for desegmentation.
              */
@@ -3674,7 +3680,7 @@ dissect_sip_common(tvbuff_t *tvb, int offset, int remaining_length, packet_info 
                                                     parameter_len, ENC_UTF_8|ENC_NA);
                                 item = proto_tree_add_item(sip_element_tree, hf_sip_tag, tvb, parameter_offset,
                                                            parameter_len, ENC_UTF_8|ENC_NA);
-                                PROTO_ITEM_SET_HIDDEN(item);
+                                proto_item_set_hidden(item);
 
                                 /* Tag indicates in-dialog messages, in case we have a INVITE, SUBSCRIBE or REFER, mark it */
                                 switch (current_method_idx) {
@@ -3736,7 +3742,7 @@ dissect_sip_common(tvbuff_t *tvb, int offset, int remaining_length, packet_info 
                                                     parameter_len, ENC_UTF_8|ENC_NA);
                                 item = proto_tree_add_item(sip_element_tree, hf_sip_tag, tvb, parameter_offset,
                                                            parameter_len, ENC_UTF_8|ENC_NA);
-                                PROTO_ITEM_SET_HIDDEN(item);
+                                proto_item_set_hidden(item);
                             }
                         }/* hdr_tree */
                     break;
@@ -4096,6 +4102,7 @@ dissect_sip_common(tvbuff_t *tvb, int offset, int remaining_length, packet_info 
                     case POS_CALL_ID :
                     {
                         char *value = tvb_get_string_enc(wmem_packet_scope(), tvb, value_offset, value_len, ENC_UTF_8|ENC_NA);
+                        proto_item *gen_item;
 
                         /* Store the Call-id */
                         g_strlcpy(call_id, value, MAX_CALL_ID_SIZE);
@@ -4106,6 +4113,14 @@ dissect_sip_common(tvbuff_t *tvb, int offset, int remaining_length, packet_info 
                                                     hf_header_array[hf_index], tvb,
                                                     offset, next_offset - offset,
                                                     value);
+                        gen_item = proto_tree_add_string(hdr_tree,
+                                                    hf_sip_call_id_gen, tvb,
+                                                    offset, next_offset - offset,
+                                                    value);
+                        proto_item_set_generated(gen_item);
+                        if (sip_hide_generatd_call_ids) {
+                            proto_item_set_hidden(gen_item);
+                        }
                         sip_proto_set_format_text(hdr_tree, sip_element_item, tvb, offset, linelen);
                     }
                     break;
@@ -4282,7 +4297,7 @@ dissect_sip_common(tvbuff_t *tvb, int offset, int remaining_length, packet_info 
                             ti_c = proto_tree_add_item(hdr_tree, hf_sip_auth, tvb,
                                                      offset, next_offset-offset,
                                                      ENC_UTF_8|ENC_NA);
-                            PROTO_ITEM_SET_HIDDEN(ti_c);
+                            proto_item_set_hidden(ti_c);
 
                             /* Authentication-Info does not begin with the scheme name */
                             if (hf_index != POS_AUTHENTICATION_INFO)
@@ -4667,6 +4682,14 @@ dissect_sip_common(tvbuff_t *tvb, int offset, int remaining_length, packet_info 
          * There's a message body starting at "offset".
          * Set the length of the header item.
          */
+        sdp_setup_info_t setup_info;
+
+        setup_info.hf_id = hf_sip_call_id_gen;
+        setup_info.add_hidden = sip_hide_generatd_call_ids;
+        setup_info.hf_type = SDP_TRACE_ID_HF_TYPE_STR;
+        setup_info.trace_id.str = wmem_strdup(wmem_file_scope(), call_id);
+        message_info.data = &setup_info;
+
         proto_item_set_end(th, tvb, offset);
         if(content_encoding_parameter_str != NULL &&
             (!strncmp(content_encoding_parameter_str, "gzip", 4) ||
@@ -4707,7 +4730,7 @@ dissect_sip_common(tvbuff_t *tvb, int offset, int remaining_length, packet_info 
                         DPRINT(("calling setup_sdp_transport() SDP_EXCHANGE_OFFER frame=%d",
                                 pinfo->num));
                         DINDENT();
-                        setup_sdp_transport(next_tvb, pinfo, SDP_EXCHANGE_OFFER, pinfo->num, sip_delay_sdp_changes);
+                        setup_sdp_transport(next_tvb, pinfo, SDP_EXCHANGE_OFFER, pinfo->num, sip_delay_sdp_changes, &setup_info);
                         DENDENT();
                     } else if (line_type == STATUS_LINE) {
                         if (stat_info->response_code >= 400) {
@@ -4716,7 +4739,7 @@ dissect_sip_common(tvbuff_t *tvb, int offset, int remaining_length, packet_info 
                                     request_for_response, pinfo->num));
                             DINDENT();
                             /* SIP client request failed, so SDP offer should fail */
-                            setup_sdp_transport(next_tvb, pinfo, SDP_EXCHANGE_ANSWER_REJECT, request_for_response, sip_delay_sdp_changes);
+                            setup_sdp_transport(next_tvb, pinfo, SDP_EXCHANGE_ANSWER_REJECT, request_for_response, sip_delay_sdp_changes, &setup_info);
                             DENDENT();
                         }
                         else if ((stat_info->response_code >= 200) && (stat_info->response_code <= 299)) {
@@ -4725,7 +4748,7 @@ dissect_sip_common(tvbuff_t *tvb, int offset, int remaining_length, packet_info 
                                     request_for_response, pinfo->num));
                             DINDENT();
                             /* SIP success request, so SDP offer should be accepted */
-                            setup_sdp_transport(next_tvb, pinfo, SDP_EXCHANGE_ANSWER_ACCEPT, request_for_response, sip_delay_sdp_changes);
+                            setup_sdp_transport(next_tvb, pinfo, SDP_EXCHANGE_ANSWER_ACCEPT, request_for_response, sip_delay_sdp_changes, &setup_info);
                             DENDENT();
                         }
                     }
@@ -4790,26 +4813,26 @@ dissect_sip_common(tvbuff_t *tvb, int offset, int remaining_length, packet_info 
         proto_item *item;
         item = proto_tree_add_boolean(reqresp_tree, hf_sip_resend, tvb, orig_offset, 0,
                                       resend_for_packet > 0);
-        PROTO_ITEM_SET_GENERATED(item);
+        proto_item_set_generated(item);
         if (resend_for_packet > 0)
         {
             item = proto_tree_add_uint(reqresp_tree, hf_sip_original_frame,
                                        tvb, orig_offset, 0, resend_for_packet);
-            PROTO_ITEM_SET_GENERATED(item);
+            proto_item_set_generated(item);
         }
 
         if (request_for_response > 0)
         {
             item = proto_tree_add_uint(reqresp_tree, hf_sip_matching_request_frame,
                                        tvb, orig_offset, 0, request_for_response);
-            PROTO_ITEM_SET_GENERATED(item);
+            proto_item_set_generated(item);
             item = proto_tree_add_uint(reqresp_tree, hf_sip_response_time,
                                        tvb, orig_offset, 0, response_time);
-            PROTO_ITEM_SET_GENERATED(item);
+            proto_item_set_generated(item);
             if ((line_type == STATUS_LINE)&&(strcmp(cseq_method, "BYE") == 0)){
                 item = proto_tree_add_uint(reqresp_tree, hf_sip_release_time,
                                           tvb, orig_offset, 0, response_time);
-                PROTO_ITEM_SET_GENERATED(item);
+                proto_item_set_generated(item);
             }
         }
     }
@@ -5151,7 +5174,7 @@ guint sip_is_packet_resend(packet_info *pinfo,
     }
 
     /* Return any answer stored from previous dissection */
-    if (pinfo->fd->flags.visited)
+    if (pinfo->fd->visited)
     {
         sip_frame_result = (sip_frame_result_value*)p_get_proto_data(wmem_file_scope(), pinfo, proto_sip, pinfo->curr_layer_num);
         if (sip_frame_result != NULL)
@@ -5349,7 +5372,7 @@ guint sip_find_request(packet_info *pinfo,
     }
 
     /* Return any answer stored from previous dissection */
-    if (pinfo->fd->flags.visited)
+    if (pinfo->fd->visited)
     {
         sip_frame_result = (sip_frame_result_value*)p_get_proto_data(wmem_file_scope(), pinfo, proto_sip, pinfo->curr_layer_num);
         if (sip_frame_result != NULL)
@@ -5463,7 +5486,7 @@ guint sip_find_invite(packet_info *pinfo,
     }
 
     /* Return any answer stored from previous dissection */
-    if (pinfo->fd->flags.visited)
+    if (pinfo->fd->visited)
     {
         sip_frame_result = (sip_frame_result_value*)p_get_proto_data(wmem_file_scope(), pinfo, proto_sip, pinfo->curr_layer_num);
         if (sip_frame_result != NULL)
@@ -5759,7 +5782,7 @@ static void sip_stat_init(stat_tap_table_ui* new_stat)
     }
 }
 
-static gboolean
+static tap_packet_status
 sip_stat_packet(void *tapdata, packet_info *pinfo _U_, epan_dissect_t *edt _U_, const void *siv_ptr)
 {
     stat_data_t* stat_data = (stat_data_t*) tapdata;
@@ -5805,7 +5828,7 @@ sip_stat_packet(void *tapdata, packet_info *pinfo _U_, epan_dissect_t *edt _U_, 
         }
 
     } else {
-        return FALSE;
+        return TAP_PACKET_DONT_REDRAW;
     }
 
     if (cur_table) {
@@ -5852,7 +5875,7 @@ sip_stat_packet(void *tapdata, packet_info *pinfo _U_, epan_dissect_t *edt _U_, 
         }
     }
 
-    return TRUE;
+    return TAP_PACKET_REDRAW;
 }
 
 static void
@@ -7199,7 +7222,13 @@ void proto_register_sip(void)
         { "icid-gen-addr",  "sip.icid_gen_addr",
             FT_STRING, BASE_NONE, NULL, 0x0,
             NULL, HFILL }
-        }
+        },
+        { &hf_sip_call_id_gen,
+        { "Generated Call-ID",         "sip.call_id_generated",
+            FT_STRING, BASE_NONE,NULL,0x0,
+            "Use to catch call id across protocols", HFILL }
+        },
+
     };
 
     /* raw_sip header field(s) */
@@ -7380,6 +7409,11 @@ void proto_register_sip(void)
         "prevents tracking media in early-media call scenarios",
         &sip_delay_sdp_changes);
 
+    prefs_register_bool_preference(sip_module, "hide_generatd_call_id",
+        "Hide the generated Call Id",
+        "Whether the generated call id should be hiddden(not displayed) in the tree or not.",
+        &sip_hide_generatd_call_ids);
+
     /* UAT */
     sip_custom_headers_uat = uat_new("Custom SIP Header Fields",
         sizeof(header_field_t),
@@ -7490,7 +7524,7 @@ proto_reg_handoff_sip(void)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 4

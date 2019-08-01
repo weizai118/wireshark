@@ -37,6 +37,10 @@ ExportObjectDialog::ExportObjectDialog(QWidget &parent, CaptureFile &cf, registe
     proxyModel_.setSourceModel(&model_);
     eo_ui_->objectTree->setModel(&proxyModel_);
 
+    proxyModel_.setFilterFixedString("");
+    proxyModel_.setFilterCaseSensitivity(Qt::CaseInsensitive);
+    proxyModel_.setFilterKeyColumn(-1);
+
 #if defined(Q_OS_MAC)
     eo_ui_->progressLabel->setAttribute(Qt::WA_MacSmallSize, true);
     eo_ui_->progressBar->setAttribute(Qt::WA_MacSmallSize, true);
@@ -45,6 +49,9 @@ ExportObjectDialog::ExportObjectDialog(QWidget &parent, CaptureFile &cf, registe
     connect(&model_, SIGNAL(rowsInserted(QModelIndex,int,int)),
             this, SLOT(modelDataChanged(QModelIndex)));
     connect(&model_, SIGNAL(modelReset()), this, SLOT(modelRowsReset()));
+    connect(eo_ui_->filterLine, &QLineEdit::textChanged,
+            &proxyModel_, &QSortFilterProxyModel::setFilterFixedString);
+
 
     save_bt_ = eo_ui_->buttonBox->button(QDialogButtonBox::Save);
     save_all_bt_ = eo_ui_->buttonBox->button(QDialogButtonBox::SaveAll);
@@ -145,7 +152,11 @@ void ExportObjectDialog::saveCurrentEntry()
 {
     QDir path(wsApp->lastOpenDir());
 
-    QModelIndex current = eo_ui_->objectTree->currentIndex();
+    QModelIndex proxyIndex = eo_ui_->objectTree->currentIndex();
+    if (!proxyIndex.isValid())
+        return;
+
+    QModelIndex current = proxyModel_.mapToSource(proxyIndex);
     if (!current.isValid())
         return;
 
@@ -153,7 +164,7 @@ void ExportObjectDialog::saveCurrentEntry()
     if (entry_filename.isEmpty())
         return;
 
-    GString *safe_filename = eo_massage_str(entry_filename.toUtf8().constData(), EXPORT_OBJECT_MAXFILELEN-path.canonicalPath().length(), 0);
+    GString *safe_filename = eo_massage_str(entry_filename.toUtf8().constData(), EXPORT_OBJECT_MAXFILELEN, 0);
     QString file_name = WiresharkFileDialog::getSaveFileName(this, wsApp->windowTitleString(tr("Save Object As" UTF8_HORIZONTAL_ELLIPSIS)),
                                              safe_filename->str);
     g_string_free(safe_filename, TRUE);
@@ -180,18 +191,10 @@ void ExportObjectDialog::saveAllEntries()
                                                      save_in_dir.canonicalPath(),
                                                      QFileDialog::ShowDirsOnly);
 
-    if (save_in_path.length() < 1 || save_in_path.length() > EXPORT_OBJECT_MAXFILELEN)
+    if (save_in_path.length() < 1)
         return;
 
-    if (!model_.saveAllEntries(save_in_path))
-    {
-        QMessageBox::warning(
-                    this,
-                    tr("Object Export"),
-                    tr("Some files could not be saved."),
-                    QMessageBox::Ok
-                    );
-    }
+    model_.saveAllEntries(save_in_path);
 }
 
 /*

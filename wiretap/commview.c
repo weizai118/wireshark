@@ -12,7 +12,13 @@
  */
 
 /* A brief description of this file format is available at:
- *    http://www.tamos.com/htmlhelp/commview/logformat.htm
+ *    https://www.tamos.com/htmlhelp/commview/logformat.htm
+ *
+ * Use
+ *
+ *    https://web.archive.org/web/20171022225753/http://www.tamos.com/htmlhelp/commview/logformat.htm
+ *
+ * if that doesn't display anything.
  */
 
 #include "config.h"
@@ -73,8 +79,8 @@ typedef struct commview_header {
 #define MEDIUM_WIFI		1
 #define MEDIUM_TOKEN_RING	2
 
-static gboolean commview_read(wtap *wth, int *err, gchar **err_info,
-			      gint64 *data_offset);
+static gboolean commview_read(wtap *wth, wtap_rec *rec, Buffer *buf,
+                              int *err, gchar **err_info, gint64 *data_offset);
 static gboolean commview_seek_read(wtap *wth, gint64 seek_off,
 				   wtap_rec *rec,
 				   Buffer *buf, int *err, gchar **err_info);
@@ -281,12 +287,12 @@ commview_read_packet(FILE_T fh, wtap_rec *rec, Buffer *buf,
 }
 
 static gboolean
-commview_read(wtap *wth, int *err, gchar **err_info, gint64 *data_offset)
+commview_read(wtap *wth, wtap_rec *rec, Buffer *buf, int *err,
+              gchar **err_info, gint64 *data_offset)
 {
 	*data_offset = file_tell(wth->fh);
 
-	return commview_read_packet(wth->fh, &wth->rec, wth->rec_data, err,
-	    err_info);
+	return commview_read_packet(wth->fh, rec, buf, err, err_info);
 }
 
 static gboolean
@@ -593,7 +599,7 @@ static gboolean commview_dump(wtap_dumper *wdh,
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

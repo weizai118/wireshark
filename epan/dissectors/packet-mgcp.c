@@ -148,6 +148,7 @@ static int hf_mgcp_param_maxmgcpdatagram = -1;
 static int hf_mgcp_param_packagelist = -1;
 static int hf_mgcp_param_extension = -1;
 static int hf_mgcp_param_extension_critical = -1;
+static int hf_mgcp_param_resourceid = -1;
 static int hf_mgcp_param_invalid = -1;
 static int hf_mgcp_messagecount = -1;
 static int hf_mgcp_dup = -1;
@@ -320,14 +321,14 @@ static const value_string mgcp_mesage_type[] = {
 	{  0, NULL}
 };
 
-static int
+static tap_packet_status
 mgcpstat_packet(void *pms, packet_info *pinfo, epan_dissect_t *edt _U_, const void *pmi)
 {
 	rtd_data_t* rtd_data = (rtd_data_t*)pms;
 	rtd_stat_table* ms = &rtd_data->stat_table;
 	const mgcp_info_t *mi = (const mgcp_info_t *)pmi;
 	nstime_t delta;
-	int ret = 0;
+	tap_packet_status ret = TAP_PACKET_DONT_REDRAW;
 
 	switch (mi->mgcp_type) {
 
@@ -388,7 +389,7 @@ mgcpstat_packet(void *pms, packet_info *pinfo, epan_dissect_t *edt _U_, const vo
 				time_stat_update(&(ms->time_stats[0].rtd[10]), &delta, pinfo);
 			}
 
-			ret = 1;
+			ret = TAP_PACKET_REDRAW;
 		}
 		break;
 
@@ -406,7 +407,6 @@ mgcpstat_packet(void *pms, packet_info *pinfo, epan_dissect_t *edt _U_, const vo
  */
 static gint tvb_find_null_line(tvbuff_t* tvb, gint offset, gint len, gint* next_offset);
 static gint tvb_find_dot_line(tvbuff_t* tvb, gint offset, gint len, gint* next_offset);
-static gboolean is_rfc2234_alpha(guint8 c);
 
 static dissector_handle_t sdp_handle;
 static dissector_handle_t mgcp_handle;
@@ -507,7 +507,7 @@ static int dissect_mgcp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, voi
 
 	tii = proto_tree_add_uint(mgcp_tree, hf_mgcp_messagecount, tvb,
 			0 , 0 , num_messages);
-	PROTO_ITEM_SET_HIDDEN(tii);
+	proto_item_set_hidden(tii);
 
 	/*
 	 * Add our column information after dissecting SDP
@@ -684,7 +684,7 @@ static gboolean is_mgcp_verb(tvbuff_t *tvb, gint offset, gint maxlength, const g
 		return FALSE;
 
 	/* Read the string into 'word' and see if it looks like the start of a verb */
-	if ((maxlength >= 4) && tvb_get_nstringz0(tvb, offset, sizeof(word), word))
+	if ((maxlength >= 4) && tvb_get_raw_bytes_as_string(tvb, offset, word, sizeof word))
 	{
 		if (((g_ascii_strncasecmp(word, "EPCF", 4) == 0) && (*verb_name = "EndpointConfiguration")) ||
 		    ((g_ascii_strncasecmp(word, "CRCX", 4) == 0) && (*verb_name = "CreateConnection")) ||
@@ -696,8 +696,8 @@ static gboolean is_mgcp_verb(tvbuff_t *tvb, gint offset, gint maxlength, const g
 		    ((g_ascii_strncasecmp(word, "AUCX", 4) == 0) && (*verb_name = "AuditConnection")) ||
 		    ((g_ascii_strncasecmp(word, "RSIP", 4) == 0) && (*verb_name = "RestartInProgress")) ||
 		    ((g_ascii_strncasecmp(word, "MESG", 4) == 0) && (*verb_name = "Message")) ||
-		    (word[0] == 'X' && is_rfc2234_alpha(word[1]) && is_rfc2234_alpha(word[2]) &&
-		                       is_rfc2234_alpha(word[3]) && (*verb_name = "*Experimental*")))
+		    (word[0] == 'X' && g_ascii_isalpha(word[1]) && g_ascii_isalpha(word[2]) &&
+		                       g_ascii_isalpha(word[3]) && (*verb_name = "*Experimental*")))
 		{
 			returnvalue = TRUE;
 		}
@@ -733,7 +733,7 @@ static gboolean is_mgcp_verb(tvbuff_t *tvb, gint offset, gint maxlength, const g
 static gboolean is_mgcp_rspcode(tvbuff_t *tvb, gint offset, gint maxlength)
 {
 	gboolean returnvalue = FALSE;
-	guint8 word[4];
+	char word[4];
 
 	/* see the comment in is_mgcp_verb() */
 	if (tvb_captured_length_remaining(tvb, offset) < (gint)sizeof(word))
@@ -742,7 +742,7 @@ static gboolean is_mgcp_rspcode(tvbuff_t *tvb, gint offset, gint maxlength)
 	/* Do 1st 3 characters look like digits? */
 	if (maxlength >= 3)
 	{
-		tvb_get_nstringz0(tvb, offset, sizeof(word), word);
+		tvb_get_raw_bytes_as_string(tvb, offset, word, sizeof word);
 		if (g_ascii_isdigit(word[0]) && g_ascii_isdigit(word[1]) && g_ascii_isdigit(word[2]))
 		{
 			returnvalue = TRUE;
@@ -761,24 +761,6 @@ static gboolean is_mgcp_rspcode(tvbuff_t *tvb, gint offset, gint maxlength)
 
 	return returnvalue;
 }
-
-/*
- * is_rfc2234_alpha - Indicates whether the character c is an alphabetical
- *                    character.  This function is used instead of
- *                    isalpha because isalpha may deviate from the rfc2234
- *                    definition of ALPHA in some locales.
- *
- * Parameter:
- * c - The character being checked for being an alphabetical character.
- *
- * Return: TRUE if c is an upper or lower case alphabetical character,
- *         FALSE otherwise.
- */
-static gboolean is_rfc2234_alpha(guint8 c)
-{
-	return ((c <= 'Z' && c >= 'A' ) || (c <= 'z' && c >= 'a'));
-}
-
 
 /*
  * tvb_parse_param - Parse the MGCP param into a type and a value.
@@ -807,7 +789,7 @@ static gint tvb_parse_param(tvbuff_t* tvb, gint offset, gint len, int** hf, mgcp
 
 	if (len > 0)
 	{
-		tempchar = tvb_get_guint8(tvb, tvb_current_offset);
+		tempchar = (guint8)g_ascii_toupper(tvb_get_guint8(tvb, tvb_current_offset));
 
 		switch (tempchar)
 		{
@@ -871,18 +853,18 @@ static gint tvb_parse_param(tvbuff_t* tvb, gint offset, gint len, int** hf, mgcp
 				/* XRM/MCR */
 				else
 				if (len > (tvb_current_offset - offset) &&
-				   (tempchar = tvb_get_guint8(tvb,tvb_current_offset)) == 'R')
+				   (tempchar = (guint8)g_ascii_toupper(tvb_get_guint8(tvb,tvb_current_offset))) == 'R')
 				{
 					/* Move past 'R' */
 					tvb_current_offset += 3;
 					if (len > (tvb_current_offset - offset) &&
-						(tempchar = tvb_get_guint8(tvb,tvb_current_offset)) == 'R')
+						(tempchar = (guint8)g_ascii_toupper(tvb_get_guint8(tvb,tvb_current_offset))) == 'R')
 					{
 						*hf = &hf_mgcp_param_remotevoicemetrics;
 					}
 					else
 					if (len > (tvb_current_offset - offset) &&
-					   (tempchar = tvb_get_guint8(tvb,tvb_current_offset)) == 'L')
+					   (tempchar = (guint8)g_ascii_toupper(tvb_get_guint8(tvb,tvb_current_offset))) == 'L')
 					{
 						*hf = &hf_mgcp_param_localvoicemetrics;
 					}
@@ -901,7 +883,7 @@ static gint tvb_parse_param(tvbuff_t* tvb, gint offset, gint len, int** hf, mgcp
 					/* Keep going, through possible vendor param name */
 					for (counter = 1;
 					    ((len > (counter + tvb_current_offset-offset)) &&
-					    (is_rfc2234_alpha(tempchar = tvb_get_guint8(tvb, tvb_current_offset+counter)) ||
+					    (g_ascii_isalpha(tempchar = tvb_get_guint8(tvb, tvb_current_offset+counter)) ||
 					     g_ascii_isdigit(tempchar))) ;
 					     counter++);
 
@@ -932,7 +914,7 @@ static gint tvb_parse_param(tvbuff_t* tvb, gint offset, gint len, int** hf, mgcp
 			case 'M':
 				tvb_current_offset++;
 				if (len > (tvb_current_offset - offset) &&
-				   (tempchar = tvb_get_guint8(tvb, tvb_current_offset)) == ':')
+				   (tempchar = (guint8)g_ascii_toupper(tvb_get_guint8(tvb, tvb_current_offset))) == ':')
 				{
 					*hf = &hf_mgcp_param_connectionmode;
 					tvb_current_offset--;
@@ -946,7 +928,7 @@ static gint tvb_parse_param(tvbuff_t* tvb, gint offset, gint len, int** hf, mgcp
 			case 'R':
 				tvb_current_offset++;
 				if (len > (tvb_current_offset - offset) &&
-				    (tempchar = tvb_get_guint8(tvb, tvb_current_offset)) == ':')
+				    (tempchar = (guint8)g_ascii_toupper(tvb_get_guint8(tvb, tvb_current_offset))) == ':')
 				{
 					*hf = &hf_mgcp_param_reqevents;
 					tvb_current_offset--;
@@ -974,6 +956,18 @@ static gint tvb_parse_param(tvbuff_t* tvb, gint offset, gint len, int** hf, mgcp
 			case 'D':
 				if (tvb_get_guint8(tvb, tvb_current_offset+1) != ':')
 				{
+					if (len > (tvb_current_offset + 5 - offset) &&
+						(g_ascii_toupper(tvb_get_guint8(tvb, tvb_current_offset + 1) == 'Q')) &&
+						(                tvb_get_guint8(tvb, tvb_current_offset + 2) == '-' ) &&
+						(g_ascii_toupper(tvb_get_guint8(tvb, tvb_current_offset + 3) == 'R')) &&
+						(g_ascii_toupper(tvb_get_guint8(tvb, tvb_current_offset + 4) == 'I')) &&
+						(                tvb_get_guint8(tvb, tvb_current_offset + 5) == ':' )
+					) {
+						tvb_current_offset+=4;
+						*hf = &hf_mgcp_param_resourceid;
+						break;
+					}
+
 					*hf = &hf_mgcp_param_invalid;
 					break;
 				}
@@ -992,7 +986,7 @@ static gint tvb_parse_param(tvbuff_t* tvb, gint offset, gint len, int** hf, mgcp
 			case 'P':
 				tvb_current_offset++;
 				if (len > (tvb_current_offset - offset) &&
-				    (tempchar = tvb_get_guint8(tvb, tvb_current_offset)) == ':')
+				    (tempchar = (guint8)g_ascii_toupper(tvb_get_guint8(tvb, tvb_current_offset))) == ':')
 				{
 					*hf = &hf_mgcp_param_connectionparam;
 					tvb_current_offset--;
@@ -1006,7 +1000,7 @@ static gint tvb_parse_param(tvbuff_t* tvb, gint offset, gint len, int** hf, mgcp
 			case 'E':
 				tvb_current_offset++;
 				if (len > (tvb_current_offset - offset) &&
-				    (tempchar = tvb_get_guint8(tvb, tvb_current_offset)) == ':')
+				    (tempchar = (guint8)g_ascii_toupper(tvb_get_guint8(tvb, tvb_current_offset))) == ':')
 				{
 					*hf = &hf_mgcp_param_reasoncode;
 					tvb_current_offset--;
@@ -1020,7 +1014,7 @@ static gint tvb_parse_param(tvbuff_t* tvb, gint offset, gint len, int** hf, mgcp
 			case 'Z':
 				tvb_current_offset++;
 				if (len > (tvb_current_offset - offset) &&
-				    (tempchar = tvb_get_guint8(tvb, tvb_current_offset)) == ':')
+				    (tempchar = (guint8)g_ascii_toupper(tvb_get_guint8(tvb, tvb_current_offset))) == ':')
 				{
 					*hf = &hf_mgcp_param_specificendpoint;
 					tvb_current_offset--;
@@ -1268,7 +1262,7 @@ static void dissect_mgcp_firstline(tvbuff_t *tvb, packet_info *pinfo, proto_tree
 		{
 			case MGCP_RESPONSE:
 				hidden_item = proto_tree_add_boolean(tree, hf_mgcp_rsp, tvb, 0, 0, TRUE);
-				PROTO_ITEM_SET_HIDDEN(hidden_item);
+				proto_item_set_hidden(hidden_item);
 				/* Check for MGCP response.  A response must match a call that
 				   we've seen, and the response must be sent to the same
 				   port and address that the call came from, and must
@@ -1322,10 +1316,10 @@ static void dissect_mgcp_firstline(tvbuff_t *tvb, packet_info *pinfo, proto_tree
 							                                  tvb, 0, 0, mgcp_call->req_num,
 							                                  "This is a response to a request in frame %u",
 							                                  mgcp_call->req_num);
-							PROTO_ITEM_SET_GENERATED(item);
+							proto_item_set_generated(item);
 							nstime_delta(&delta, &pinfo->abs_ts, &mgcp_call->req_time);
 							item = proto_tree_add_time(tree, hf_mgcp_time, tvb, 0, 0, &delta);
-							PROTO_ITEM_SET_GENERATED(item);
+							proto_item_set_generated(item);
 						}
 
 						if (mgcp_call->rsp_num == 0)
@@ -1352,13 +1346,13 @@ static void dissect_mgcp_firstline(tvbuff_t *tvb, packet_info *pinfo, proto_tree
 										mi->transid);
 
 								item = proto_tree_add_uint(tree, hf_mgcp_dup, tvb, 0, 0, mi->transid);
-								PROTO_ITEM_SET_HIDDEN(item);
+								proto_item_set_hidden(item);
 								item = proto_tree_add_uint(tree, hf_mgcp_rsp_dup,
 										tvb, 0, 0, mi->transid);
-								PROTO_ITEM_SET_GENERATED(item);
+								proto_item_set_generated(item);
 								item = proto_tree_add_uint(tree, hf_mgcp_rsp_dup_frame,
 										tvb, 0, 0, mgcp_call->rsp_num);
-								PROTO_ITEM_SET_GENERATED(item);
+								proto_item_set_generated(item);
 							}
 						}
 						/* Now store the response code (after comparison above) */
@@ -1368,7 +1362,7 @@ static void dissect_mgcp_firstline(tvbuff_t *tvb, packet_info *pinfo, proto_tree
 				break;
 			case MGCP_REQUEST:
 				hidden_item = proto_tree_add_boolean(tree, hf_mgcp_req, tvb, 0, 0, TRUE);
-				PROTO_ITEM_SET_HIDDEN(hidden_item);
+				proto_item_set_hidden(hidden_item);
 				/* Keep track of the address and port whence the call came,
 				 * and the port to which the call is being sent, so that
 				 * we can match up calls with replies.
@@ -1442,11 +1436,11 @@ static void dissect_mgcp_firstline(tvbuff_t *tvb, packet_info *pinfo, proto_tree
 						{
 							proto_item* item;
 							item = proto_tree_add_uint(tree, hf_mgcp_dup, tvb, 0, 0, mi->transid);
-							PROTO_ITEM_SET_HIDDEN(item);
+							proto_item_set_hidden(item);
 							item = proto_tree_add_uint(tree, hf_mgcp_req_dup, tvb, 0, 0, mi->transid);
-							PROTO_ITEM_SET_GENERATED(item);
+							proto_item_set_generated(item);
 							item = proto_tree_add_uint(tree, hf_mgcp_req_dup_frame, tvb, 0, 0, mi->req_num);
-							PROTO_ITEM_SET_GENERATED(item);
+							proto_item_set_generated(item);
 						}
 					}
 				}
@@ -1476,7 +1470,7 @@ static void dissect_mgcp_firstline(tvbuff_t *tvb, packet_info *pinfo, proto_tree
 					                                              tvb, 0, 0, mgcp_call->rsp_num,
 					                                              "The response to this request is in frame %u",
 					                                              mgcp_call->rsp_num);
-					PROTO_ITEM_SET_GENERATED(item);
+					proto_item_set_generated(item);
 				}
 				break;
 			default:
@@ -2645,6 +2639,9 @@ void proto_register_mgcp(void)
 			{ &hf_mgcp_param_extension_critical,
 			  { "Extension Parameter (critical)", "mgcp.param.extensioncritical", FT_STRING, BASE_NONE, NULL, 0x0,
 			    "Critical Extension Parameter", HFILL }},
+			{ &hf_mgcp_param_resourceid,
+			  { "ResourceIdentifier (DQ-RI)", "mgcp.param.resourceid", FT_STRING, BASE_NONE, NULL, 0x0,
+			    "Resource Identifier", HFILL }},
 			{ &hf_mgcp_param_invalid,
 			  { "Invalid Parameter", "mgcp.param.invalid", FT_STRING, BASE_NONE, NULL, 0x0,
 			    NULL, HFILL }},
@@ -2797,7 +2794,7 @@ void proto_reg_handoff_mgcp(void)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

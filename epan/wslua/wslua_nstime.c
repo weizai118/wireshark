@@ -33,12 +33,13 @@ WSLUA_CONSTRUCTOR NSTime_new(lua_State *L) {
     /* Creates a new NSTime object. */
 #define WSLUA_OPTARG_NSTime_new_SECONDS 1 /* Seconds. */
 #define WSLUA_OPTARG_NSTime_new_NSECONDS 2 /* Nano seconds. */
-    NSTime nstime = (NSTime)g_malloc(sizeof(nstime_t));
+    lua_Integer secs = luaL_optinteger(L,WSLUA_OPTARG_NSTime_new_SECONDS,0);
+    lua_Integer nsecs = luaL_optinteger(L,WSLUA_OPTARG_NSTime_new_NSECONDS,0);
 
+    NSTime nstime = g_new(nstime_t, 1);
     if (!nstime) return 0;
-
-    nstime->secs = (time_t) luaL_optinteger(L,WSLUA_OPTARG_NSTime_new_SECONDS,0);
-    nstime->nsecs = (int) luaL_optinteger(L,WSLUA_OPTARG_NSTime_new_NSECONDS,0);
+    nstime->secs = (time_t) secs;
+    nstime->nsecs = (int) nsecs;
 
     pushNSTime(L,nstime);
 
@@ -216,14 +217,13 @@ WSLUA_META NSTime_meta[] = {
 };
 
 int NSTime_register(lua_State* L) {
-    WSLUA_REGISTER_CLASS(NSTime);
-    WSLUA_REGISTER_ATTRIBUTES(NSTime);
+    WSLUA_REGISTER_CLASS_WITH_ATTRS(NSTime);
     return 0;
 }
 
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 4

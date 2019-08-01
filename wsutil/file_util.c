@@ -493,22 +493,14 @@ ws_init_dll_search_path()
 {
     gboolean dll_dir_set = FALSE;
     wchar_t *program_path_w;
-    wchar_t npcap_path_w[MAX_PATH];
-    unsigned int retval;
 
-    dll_dir_set = SetDllDirectory(_T(""));
-    if (dll_dir_set) {
-        /* Add Npcap folder to libraries search path. */
-        retval = GetSystemDirectoryW(npcap_path_w, MAX_PATH);
-        if (0 < retval && retval <= MAX_PATH) {
-            wcscat_s(npcap_path_w, MAX_PATH, L"\\Npcap");
-            dll_dir_set = SetDllDirectory(npcap_path_w);
-        }
-    }
+    /* Remove the current directory from the default DLL search path. */
+    SetDllDirectory(_T(""));
 
-    if (!dll_dir_set && init_dll_load_paths()) {
+    if (init_dll_load_paths()) {
+        /* Ensure that extcap executables can find wsutil, etc. */
         program_path_w = g_utf8_to_utf16(program_path, -1, NULL, NULL, NULL);
-        SetCurrentDirectory(program_path_w);
+        dll_dir_set = SetDllDirectory(program_path_w);
         g_free(program_path_w);
     }
 
@@ -561,6 +553,30 @@ ws_load_library(const gchar *library_name)
     return NULL;
 }
 
+static GModule *
+load_npcap_module(const gchar *full_path, GModuleFlags flags)
+{
+    /*
+     * Npcap's wpcap.dll requires packet.dll from the same directory. Either
+     * SetDllDirectory or SetCurrentDirectory could make this work, but it
+     * interferes with other uses of these settings. LoadLibraryEx is ideal as
+     * it can be configured to put the directory containing the DLL to the
+     * search path. Unfortunately g_module_open uses LoadLibrary internally, so
+     * as a workaround manually load the Npcap libraries first and then use
+     * g_module_open to obtain a GModule for the loaded library.
+     */
+
+    wchar_t *wpath = g_utf8_to_utf16(full_path, -1, NULL, NULL, NULL);
+    HMODULE module = LoadLibraryEx(wpath, NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR);
+    g_free(wpath);
+    if (!module) {
+        return NULL;
+    }
+    GModule *mod = g_module_open(full_path, flags);
+    FreeLibrary(module);
+    return mod;
+}
+
 GModule *
 ws_module_open(gchar *module_name, GModuleFlags flags)
 {
@@ -575,8 +591,8 @@ ws_module_open(gchar *module_name, GModuleFlags flags)
 
     if (full_path) {
         mod = g_module_open(full_path, flags);
+        g_free(full_path);
         if (mod) {
-            g_free(full_path);
             return mod;
         }
     }
@@ -585,9 +601,9 @@ ws_module_open(gchar *module_name, GModuleFlags flags)
     full_path = g_module_build_path(npcap_path, module_name);
 
     if (full_path) {
-        mod = g_module_open(full_path, flags);
+        mod = load_npcap_module(full_path, flags);
+        g_free(full_path);
         if (mod) {
-            g_free(full_path);
             return mod;
         }
     }
@@ -597,8 +613,8 @@ ws_module_open(gchar *module_name, GModuleFlags flags)
 
     if (full_path) {
         mod = g_module_open(full_path, flags);
+        g_free(full_path);
         if (mod) {
-            g_free(full_path);
             return mod;
         }
     }
@@ -610,29 +626,31 @@ ws_module_open(gchar *module_name, GModuleFlags flags)
  */
 #define WIRESHARK_IS_RUNNING_UUID "9CA78EEA-EA4D-4490-9240-FC01FCEF464B"
 
-static SECURITY_ATTRIBUTES *sec_attributes_;
-
 static HANDLE local_running_mutex = NULL;
 static HANDLE global_running_mutex = NULL;
 
 void create_app_running_mutex() {
-    SECURITY_ATTRIBUTES *sa = NULL;
-
-    if (!sec_attributes_) sec_attributes_ = g_new0(SECURITY_ATTRIBUTES, 1);
-
-    sec_attributes_->nLength = sizeof(SECURITY_ATTRIBUTES);
-    sec_attributes_->lpSecurityDescriptor = g_new0(SECURITY_DESCRIPTOR, 1);
-    sec_attributes_->bInheritHandle = TRUE;
-    if (InitializeSecurityDescriptor(sec_attributes_->lpSecurityDescriptor, SECURITY_DESCRIPTOR_REVISION)) {
-        if (SetSecurityDescriptorDacl(sec_attributes_->lpSecurityDescriptor, TRUE, NULL, FALSE)) {
-            sa = sec_attributes_;
-        }
-    }
-
-    if (!sa) {
-        g_free(sec_attributes_->lpSecurityDescriptor);
-        g_free(sec_attributes_);
-        sec_attributes_ = NULL;
+    SECURITY_DESCRIPTOR sec_descriptor;
+    SECURITY_ATTRIBUTES sec_attributes;
+    SECURITY_ATTRIBUTES *sa;
+    memset(&sec_descriptor, 0, sizeof(SECURITY_DESCRIPTOR));
+    if (!InitializeSecurityDescriptor(&sec_descriptor, SECURITY_DESCRIPTOR_REVISION) ||
+        !SetSecurityDescriptorDacl(&sec_descriptor, TRUE, NULL, FALSE)) {
+        /*
+         * We couldn't set up the security descriptor, so use the default
+         * security attributes when creating the mutexes.
+         */
+        sa = NULL;
+    } else {
+        /*
+         * We could set it up, so set up some attributes that refer
+         * to it.
+         */
+        memset(&sec_attributes, 0, sizeof(SECURITY_ATTRIBUTES));
+        sec_attributes.nLength = sizeof(SECURITY_ATTRIBUTES);
+        sec_attributes.lpSecurityDescriptor = &sec_descriptor;
+        sec_attributes.bInheritHandle = TRUE;
+        sa = &sec_attributes;
     }
     local_running_mutex = CreateMutex(sa, FALSE, _T("Wireshark-is-running-{") _T(WIRESHARK_IS_RUNNING_UUID) _T("}"));
     global_running_mutex = CreateMutex(sa, FALSE, _T("Global\\Wireshark-is-running-{") _T(WIRESHARK_IS_RUNNING_UUID) _T("}"));
@@ -650,7 +668,7 @@ void close_app_running_mutex() {
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local Variables:
  * c-basic-offset: 4

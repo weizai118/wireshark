@@ -108,10 +108,11 @@ DisplayFilterEdit::DisplayFilterEdit(QWidget *parent, DisplayFilterEditType type
                 "  margin-left: 1px;"
                 "}"
                 );
-        connect(clear_button_, SIGNAL(clicked()), this, SLOT(clearFilter()));
+        connect(clear_button_, &StockIconToolButton::clicked, this, &DisplayFilterEdit::clearFilter);
     }
 
-    connect(this, SIGNAL(textChanged(const QString&)), this, SLOT(checkFilter(const QString&)));
+    connect(this, &DisplayFilterEdit::textChanged, this,
+            static_cast<void (DisplayFilterEdit::*)(const QString &)>(&DisplayFilterEdit::checkFilter));
 
     if (type_ == DisplayFilterToApply) {
         apply_button_ = new StockIconToolButton(this, "x-filter-apply");
@@ -126,8 +127,8 @@ DisplayFilterEdit::DisplayFilterEdit(QWidget *parent, DisplayFilterEditType type
                 "  padding: 0 0 0 0;"
                 "}"
                 );
-        connect(apply_button_, SIGNAL(clicked()), this, SLOT(applyDisplayFilter()));
-        connect(this, SIGNAL(returnPressed()), this, SLOT(applyDisplayFilter()));
+        connect(apply_button_, &StockIconToolButton::clicked, this, &DisplayFilterEdit::applyDisplayFilter);
+        connect(this, &DisplayFilterEdit::returnPressed, this, &DisplayFilterEdit::applyDisplayFilter);
     }
 
     int frameWidth = style()->pixelMetric(QStyle::PM_DefaultFrameWidth);
@@ -155,8 +156,8 @@ DisplayFilterEdit::DisplayFilterEdit(QWidget *parent, DisplayFilterEditType type
             .arg(cbsz.width() + apsz.width() + frameWidth + 1)
                   );
 
-    connect(wsApp, SIGNAL(appInitialized()), this, SLOT(updateBookmarkMenu()));
-    connect(wsApp, SIGNAL(displayFilterListChanged()), this, SLOT(updateBookmarkMenu()));
+    connect(wsApp, &WiresharkApplication::appInitialized, this, &DisplayFilterEdit::updateBookmarkMenu);
+    connect(wsApp, &WiresharkApplication::displayFilterListChanged, this, &DisplayFilterEdit::updateBookmarkMenu);
 
 }
 
@@ -232,8 +233,10 @@ void DisplayFilterEdit::resizeEvent(QResizeEvent *)
 
 void DisplayFilterEdit::focusOutEvent(QFocusEvent *event)
 {
-    if (syntaxState() == Valid)
+    if (syntaxState() == Valid) {
         emit popFilterSyntaxStatus();
+        setToolTip(QString());
+    }
     SyntaxLineEdit::focusOutEvent(event);
 }
 
@@ -250,13 +253,15 @@ void DisplayFilterEdit::checkFilter(const QString& filter_text)
         clear_button_->setVisible(!filter_text.isEmpty());
     }
 
-    popFilterSyntaxStatus();
+    emit popFilterSyntaxStatus();
+    setToolTip(QString());
     checkDisplayFilter(filter_text);
 
     switch (syntaxState()) {
     case Deprecated:
     {
-        emit pushFilterSyntaxWarning(syntaxErrorMessage());
+        emit pushFilterSyntaxStatus(syntaxErrorMessage());
+        setToolTip(syntaxErrorMessage());
         break;
     }
     case Invalid:
@@ -264,6 +269,7 @@ void DisplayFilterEdit::checkFilter(const QString& filter_text)
         QString invalidMsg(tr("Invalid filter: "));
         invalidMsg.append(syntaxErrorMessage());
         emit pushFilterSyntaxStatus(invalidMsg);
+        setToolTip(invalidMsg);
         break;
     }
     default:
@@ -318,13 +324,13 @@ void DisplayFilterEdit::updateBookmarkMenu()
     bb_menu->clear();
 
     save_action_ = bb_menu->addAction(tr("Save this filter"));
-    connect(save_action_, SIGNAL(triggered(bool)), this, SLOT(saveFilter()));
+    connect(save_action_, &QAction::triggered, this, &DisplayFilterEdit::saveFilter);
     remove_action_ = bb_menu->addAction(tr("Remove this filter"));
-    connect(remove_action_, SIGNAL(triggered(bool)), this, SLOT(removeFilter()));
+    connect(remove_action_, &QAction::triggered, this, &DisplayFilterEdit::removeFilter);
     QAction *manage_action = bb_menu->addAction(tr("Manage Display Filters"));
-    connect(manage_action, SIGNAL(triggered(bool)), this, SLOT(showFilters()));
+    connect(manage_action, &QAction::triggered, this, &DisplayFilterEdit::showFilters);
     QAction *expr_action = bb_menu->addAction(tr("Manage Filter Expressions"));
-    connect(expr_action, SIGNAL(triggered(bool)), this, SLOT(showExpressionPrefs()));
+    connect(expr_action, &QAction::triggered, this, &DisplayFilterEdit::showExpressionPrefs);
     bb_menu->addSeparator();
 
     for (GList *df_item = get_filter_list_first(DFILTER_LIST); df_item; df_item = g_list_next(df_item)) {
@@ -338,7 +344,7 @@ void DisplayFilterEdit::updateBookmarkMenu()
 
         QAction *prep_action = bb_menu->addAction(prep_text);
         prep_action->setData(df_def->strval);
-        connect(prep_action, SIGNAL(triggered(bool)), this, SLOT(applyOrPrepareFilter()));
+        connect(prep_action, &QAction::triggered, this, &DisplayFilterEdit::applyOrPrepareFilter);
     }
 
     checkFilter();
@@ -409,9 +415,8 @@ void DisplayFilterEdit::buildCompletionList(const QString &field_word)
         protocol_t *protocol = find_protocol_by_id(proto_id);
         if (!proto_is_protocol_enabled(protocol)) continue;
 
-        // Don't complete the current word.
         const QString pfname = proto_get_protocol_filter_name(proto_id);
-        if (field_word.compare(pfname)) field_list << pfname;
+        field_list << pfname;
 
         // Add fields only if we're past the protocol name and only for the
         // current protocol.
@@ -575,13 +580,24 @@ void DisplayFilterEdit::dropEvent(QDropEvent *event)
             event->setDropAction(Qt::CopyAction);
             event->accept();
 
+            QString filterText;
             if ((QApplication::keyboardModifiers() & Qt::AltModifier))
-                setText(data->field());
+                filterText = data->field();
             else
-                setText(data->filter());
+                filterText = data->filter();
+
+            bool prepare = QApplication::keyboardModifiers() & Qt::ShiftModifier;
+
+            if ( text().length() > 0 || QApplication::keyboardModifiers() & Qt::MetaModifier)
+            {
+                createFilterTextDropMenu(event, prepare, filterText);
+                return;
+            }
+
+            setText(filterText);
 
             // Holding down the Shift key will only prepare filter.
-            if (!(QApplication::keyboardModifiers() & Qt::ShiftModifier)) {
+            if ( ! prepare ) {
                 applyDisplayFilter();
             }
 
@@ -592,6 +608,70 @@ void DisplayFilterEdit::dropEvent(QDropEvent *event)
     } else {
         event->ignore();
     }
+}
+
+void DisplayFilterEdit::createFilterTextDropMenu(QDropEvent *event, bool prepare, QString filterText)
+{
+    if ( filterText.isEmpty() )
+        return;
+
+    QMenu applyMenu(this);
+
+    QAction * selAction = applyMenu.addAction(tr("Selected"));
+    selAction->setData(QString("%1").arg(filterText));
+    selAction->setProperty("clear", qVariantFromValue(true));
+    connect(selAction, &QAction::triggered, this, &DisplayFilterEdit::dropActionMenuEvent);
+
+    QAction * notSelAction = applyMenu.addAction(tr("Not Selected"));
+    notSelAction->setData(QString("!(%1)").arg(filterText));
+    notSelAction->setProperty("clear", qVariantFromValue(true));
+    connect(notSelAction, &QAction::triggered, this, &DisplayFilterEdit::dropActionMenuEvent);
+
+    if ( this->text().length() > 0 )
+    {
+        QAction * andAction = applyMenu.addAction(tr(UTF8_HORIZONTAL_ELLIPSIS "and Selected"));
+        andAction->setData(QString("&& %1").arg(filterText));
+        connect(andAction, &QAction::triggered, this, &DisplayFilterEdit::dropActionMenuEvent);
+
+        QAction * orAction = applyMenu.addAction(tr(UTF8_HORIZONTAL_ELLIPSIS "or Selected"));
+        orAction->setData(QString("|| %1").arg(filterText));
+        connect(orAction, &QAction::triggered, this, &DisplayFilterEdit::dropActionMenuEvent);
+
+        QAction * andNotAction = applyMenu.addAction(tr(UTF8_HORIZONTAL_ELLIPSIS "and not Selected"));
+        andNotAction->setData(QString("&& !(%1)").arg(filterText));
+        connect(andNotAction, &QAction::triggered, this, &DisplayFilterEdit::dropActionMenuEvent);
+
+        QAction * orNotAction = applyMenu.addAction(tr(UTF8_HORIZONTAL_ELLIPSIS "or not Selected"));
+        orNotAction->setData(QString("|| !(%1)").arg(filterText));
+        connect(orNotAction, &QAction::triggered, this, &DisplayFilterEdit::dropActionMenuEvent);
+    }
+
+    foreach ( QAction * action, applyMenu.actions() )
+        action->setProperty("prepare", qVariantFromValue(prepare));
+
+    applyMenu.exec(this->mapToGlobal(event->pos()));
+
+}
+
+void DisplayFilterEdit::dropActionMenuEvent()
+{
+    QAction * sendAction = qobject_cast<QAction *>(sender());
+    if ( ! sendAction )
+        return;
+
+    QString value = sendAction->data().toString();
+    bool prepare = sendAction->property("prepare").toBool();
+
+    QString filterText;
+    if ( sendAction->property("clear").toBool() )
+        filterText = value;
+    else
+        filterText = QString("((%1) %2)").arg(this->text()).arg(value);
+    setText(filterText);
+
+    // Holding down the Shift key will only prepare filter.
+    if ( ! prepare )
+        applyDisplayFilter();
 }
 
 /*

@@ -12,7 +12,9 @@
 #include <ui_compiled_filter_output.h>
 #include "compiled_filter_output.h"
 
-#include <wsutil/wspcap.h>
+#ifdef HAVE_LIBPCAP
+#include "wspcap.h"
+#endif
 
 #include "capture_opts.h"
 #include <wiretap/wtap.h>
@@ -115,7 +117,7 @@ void CompiledFilterOutput::copyFilterText()
 }
 
 //
-// Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+// Editor modelines  -  https://www.wireshark.org/tools/modelines.html
 //
 // Local variables:
 // c-basic-offset: 4

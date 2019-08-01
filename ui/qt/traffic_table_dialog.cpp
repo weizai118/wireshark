@@ -44,7 +44,6 @@ TrafficTableDialog::TrafficTableDialog(QWidget &parent, CaptureFile &cf, const c
     WiresharkDialog(parent, cf),
     ui(new Ui::TrafficTableDialog),
     cap_file_(cf),
-    file_closed_(false),
     filter_(filter),
     nanosecond_timestamps_(false)
 {
@@ -352,11 +351,6 @@ TrafficTableTreeWidget::TrafficTableTreeWidget(QWidget *parent, register_ct_t *t
     sortByColumn(0, Qt::AscendingOrder);
 
     connect(wsApp, SIGNAL(addressResolutionChanged()), this, SLOT(updateItemsForSettingChange()));
-}
-
-TrafficTableTreeWidget::~TrafficTableTreeWidget()
-{
-    remove_tap_listener(&hash_);
 }
 
 QList<QVariant> TrafficTableTreeWidget::rowData(int row) const

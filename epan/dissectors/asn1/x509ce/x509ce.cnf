@@ -188,12 +188,12 @@ EnhancedCertificateAssertion/pathToName                 enhancedPathToName
 
 #.FN_FTR GeneralName/uniformResourceIdentifier
 
-  PROTO_ITEM_SET_URL(actx->created_item);
+  proto_item_set_url(actx->created_item);
 
 #.END
 
 #
-# Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+# Editor modelines  -  https://www.wireshark.org/tools/modelines.html
 #
 # Local variables:
 # c-basic-offset: 2

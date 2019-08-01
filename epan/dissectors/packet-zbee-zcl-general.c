@@ -1,4 +1,3 @@
-
 /* packet-zbee-zcl-general.c
  * Dissector routines for the ZigBee ZCL General clusters like
  * Basic, Identify, OnOff ...
@@ -3072,7 +3071,7 @@ proto_register_zbee_zcl_scenes(void)
             0x00, NULL, HFILL }},
 
         { &hf_zbee_zcl_scenes_extension_set_cluster,
-            { "Cluster", "zbee_zcl_general.scenes.extension_set.cluster", FT_UINT16, BASE_HEX, VALS(zbee_aps_cid_names),
+            { "Cluster", "zbee_zcl_general.scenes.extension_set.cluster", FT_UINT16, BASE_HEX | BASE_RANGE_STRING, RVALS(zbee_aps_cid_names),
             0x00, NULL, HFILL }},
 
         { &hf_zbee_zcl_scenes_extension_set_onoff,
@@ -3209,6 +3208,7 @@ proto_reg_handoff_zbee_zcl_scenes(void)
 #define ZBEE_ZCL_ON_OFF_ATTR_ID_GLOBALSCENECONTROL  0x4000
 #define ZBEE_ZCL_ON_OFF_ATTR_ID_ONTIME              0x4001
 #define ZBEE_ZCL_ON_OFF_ATTR_ID_OFFWAITTIME         0x4002
+#define ZBEE_ZCL_ON_OFF_ATTR_ID_STARTUPONOFF        0x4003
 
 /* Server Commands Received */
 #define ZBEE_ZCL_ON_OFF_CMD_OFF                         0x00  /* Off */
@@ -3246,6 +3246,7 @@ static int hf_zbee_zcl_on_off_attr_onoff = -1;
 static int hf_zbee_zcl_on_off_attr_globalscenecontrol = -1;
 static int hf_zbee_zcl_on_off_attr_ontime = -1;
 static int hf_zbee_zcl_on_off_attr_offwaittime = -1;
+static int hf_zbee_zcl_on_off_attr_startuponoff = -1;
 static int hf_zbee_zcl_on_off_srv_rx_cmd_id = -1;
 
 static int hf_zbee_zcl_on_off_effect_identifier = -1;
@@ -3267,6 +3268,7 @@ static const value_string zbee_zcl_on_off_attr_names[] = {
     { ZBEE_ZCL_ON_OFF_ATTR_ID_GLOBALSCENECONTROL,   "GlobalSceneControl" },
     { ZBEE_ZCL_ON_OFF_ATTR_ID_ONTIME,               "OnTime" },
     { ZBEE_ZCL_ON_OFF_ATTR_ID_OFFWAITTIME,          "OffWaitTime" },
+    { ZBEE_ZCL_ON_OFF_ATTR_ID_STARTUPONOFF,         "StartUpOnOff" },
     { 0, NULL }
 };
 
@@ -3318,6 +3320,15 @@ static const range_string zbee_zcl_on_off_effect_variant_dying_light_names[] = {
 
 static const range_string zbee_zcl_on_off_effect_variant_reserved_names[] = {
     { 0x00, 0xFF, "Reserved" },
+    { 0, 0, NULL }
+};
+
+static const range_string zbee_zcl_on_off_startup_on_off_names[] = {
+    { 0x00, 0x00, "Set the OnOff attribute to Off" },
+    { 0x01, 0x01, "Set the OnOff attribute to On" },
+    { 0x02, 0x02, "Toggle the OnOff attribute" },
+    { 0x03, 0xFE, "Reserved" },
+    { 0xFF, 0xFF, "Set the OnOff attribute to its previous value" },
     { 0, 0, NULL }
 };
 
@@ -3453,6 +3464,11 @@ dissect_zcl_on_off_attr_data(proto_tree *tree, tvbuff_t *tvb, guint *offset, gui
             *offset += 2;
             break;
 
+        case ZBEE_ZCL_ON_OFF_ATTR_ID_STARTUPONOFF:
+            proto_tree_add_item(tree, hf_zbee_zcl_on_off_attr_startuponoff, tvb, *offset, 1, ENC_NA);
+            *offset += 1;
+            break;
+
         default:
             dissect_zcl_attr_data(tvb, tree, offset, data_type, client_attr);
             break;
@@ -3495,6 +3511,10 @@ proto_register_zbee_zcl_on_off(void)
 
         { &hf_zbee_zcl_on_off_attr_offwaittime,
             { "Off Wait Time", "zbee_zcl_general.onoff.attr.offwaittime", FT_UINT16, BASE_CUSTOM, CF_FUNC(decode_zcl_time_in_100ms),
+            0x00, NULL, HFILL } },
+
+        { &hf_zbee_zcl_on_off_attr_startuponoff,
+            { "Startup On Off", "zbee_zcl_general.onoff.attr.startuponoff", FT_UINT8, BASE_HEX | BASE_RANGE_STRING, RVALS(zbee_zcl_on_off_startup_on_off_names),
             0x00, NULL, HFILL } },
 
         { &hf_zbee_zcl_on_off_effect_identifier,
@@ -4375,6 +4395,7 @@ proto_reg_handoff_zbee_zcl_time(void)
 #define ZBEE_ZCL_ATTR_ID_LEVEL_CONTROL_REMAINING_TIME           0x0001  /* Remaining Time */
 #define ZBEE_ZCL_ATTR_ID_LEVEL_CONTROL_ONOFF_TRANSIT_TIME       0x0010  /* OnOff Transition Time */
 #define ZBEE_ZCL_ATTR_ID_LEVEL_CONTROL_ON_LEVEL                 0x0011  /* On Level */
+#define ZBEE_ZCL_ATTR_ID_LEVEL_CONTROL_STARTUP_LEVEL            0x4000  /* Startup Level */
 
 /* Server Commands Received */
 #define ZBEE_ZCL_CMD_ID_LEVEL_CONTROL_MOVE_TO_LEVEL             0x00  /* Move to Level */
@@ -4406,6 +4427,7 @@ static int hf_zbee_zcl_level_control_attr_current_level = -1;
 static int hf_zbee_zcl_level_control_attr_remaining_time = -1;
 static int hf_zbee_zcl_level_control_attr_onoff_transmit_time = -1;
 static int hf_zbee_zcl_level_control_attr_on_level = -1;
+static int hf_zbee_zcl_level_control_attr_startup_level = -1;
 static int hf_zbee_zcl_level_control_level = -1;
 static int hf_zbee_zcl_level_control_move_mode = -1;
 static int hf_zbee_zcl_level_control_rate = -1;
@@ -4423,6 +4445,7 @@ static const value_string zbee_zcl_level_control_attr_names[] = {
     { ZBEE_ZCL_ATTR_ID_LEVEL_CONTROL_REMAINING_TIME,            "Remaining Time" },
     { ZBEE_ZCL_ATTR_ID_LEVEL_CONTROL_ONOFF_TRANSIT_TIME,        "OnOff Transition Time" },
     { ZBEE_ZCL_ATTR_ID_LEVEL_CONTROL_ON_LEVEL,                  "On Level" },
+    { ZBEE_ZCL_ATTR_ID_LEVEL_CONTROL_STARTUP_LEVEL,             "Startup Level" },
     { 0, NULL }
 };
 
@@ -4444,6 +4467,13 @@ static const value_string zbee_zcl_level_control_move_step_mode_values[] = {
     { 0x00,   "Up" },
     { 0x01,   "Down" },
     { 0, NULL }
+};
+
+static const range_string zbee_zcl_level_control_startup_level_names[] = {
+    { 0x00, 0x00, "Set the CurrentLevel attribute to the minimum" },
+    { 0x01, 0xFE, "Set the CurrentLevel attribute to this value" },
+    { 0xFF, 0xFF, "Set the CurrentLevel attribute to its previous value" },
+    { 0, 0, NULL }
 };
 
 /*************************/
@@ -4651,6 +4681,11 @@ dissect_zcl_level_control_attr_data(proto_tree *tree, tvbuff_t *tvb, guint *offs
             *offset += 1;
             break;
 
+        case ZBEE_ZCL_ATTR_ID_LEVEL_CONTROL_STARTUP_LEVEL:
+            proto_tree_add_item(tree, hf_zbee_zcl_level_control_attr_startup_level, tvb, *offset, 1, ENC_NA);
+            *offset += 1;
+            break;
+
         default:
             dissect_zcl_attr_data(tvb, tree, offset, data_type, client_attr);
             break;
@@ -4694,6 +4729,10 @@ proto_register_zbee_zcl_level_control(void)
 
         { &hf_zbee_zcl_level_control_attr_on_level,
             { "On Level", "zbee_zcl_general.level_control.attr.on_level", FT_UINT8, BASE_DEC, NULL,
+            0x00, NULL, HFILL } },
+
+        { &hf_zbee_zcl_level_control_attr_startup_level,
+            { "Startup Level", "zbee_zcl_general.level_control.attr.startup_level", FT_UINT8, BASE_HEX | BASE_RANGE_STRING, RVALS(zbee_zcl_level_control_startup_level_names),
             0x00, NULL, HFILL } },
 
         { &hf_zbee_zcl_level_control_level,
@@ -9125,7 +9164,7 @@ proto_reg_handoff_zbee_zcl_commissioning(void)
 /* Attributes */
 #define ZBEE_ZCL_ATTR_ID_PART_MAX_IN_TRANSF_SIZE        0x0000  /* Maximum Incoming Transfer Size */
 #define ZBEE_ZCL_ATTR_ID_PART_MAX_OUT_TRANSF_SIZE       0x0001  /* Maximum Outgoing Transfer Size */
-#define ZBEE_ZCL_ATTR_ID_PART_PARTIONED_FRAME_SIZE      0x0002  /* Partioned Frame Size */
+#define ZBEE_ZCL_ATTR_ID_PART_PARTITIONED_FRAME_SIZE    0x0002  /* Partitioned Frame Size */
 #define ZBEE_ZCL_ATTR_ID_PART_LARGE_FRAME_SIZE          0x0003  /* Large Frame Size */
 #define ZBEE_ZCL_ATTR_ID_PART_ACK_FRAME_NUM             0x0004  /* Number of Ack Frame*/
 #define ZBEE_ZCL_ATTR_ID_PART_NACK_TIMEOUT              0x0005  /* Nack Timeout */
@@ -9194,7 +9233,7 @@ static gint ett_zbee_zcl_part_attrs_id_list[ZBEE_ZCL_PART_NUM_ATTRS_ID_ETT];
 static const value_string zbee_zcl_part_attr_names[] = {
     { ZBEE_ZCL_ATTR_ID_PART_MAX_IN_TRANSF_SIZE,     "Maximum Incoming Transfer Size" },
     { ZBEE_ZCL_ATTR_ID_PART_MAX_OUT_TRANSF_SIZE,    "Maximum Outgoing Transfer Size" },
-    { ZBEE_ZCL_ATTR_ID_PART_PARTIONED_FRAME_SIZE,   "Partioned Frame Size" },
+    { ZBEE_ZCL_ATTR_ID_PART_PARTITIONED_FRAME_SIZE, "Partitioned Frame Size" },
     { ZBEE_ZCL_ATTR_ID_PART_LARGE_FRAME_SIZE,       "Large Frame Size" },
     { ZBEE_ZCL_ATTR_ID_PART_ACK_FRAME_NUM,          "Number of Ack Frame" },
     { ZBEE_ZCL_ATTR_ID_PART_NACK_TIMEOUT,           "Nack Timeout" },
@@ -9593,7 +9632,7 @@ void proto_register_zbee_zcl_part(void)
             0x00, NULL, HFILL } },
 
         { &hf_zbee_zcl_part_partitioned_cluster_id,
-            { "Partitioned Cluster ID", "zbee_zcl_general.part.part_cluster_id", FT_UINT16, BASE_HEX, VALS(zbee_aps_cid_names),
+            { "Partitioned Cluster ID", "zbee_zcl_general.part.part_cluster_id", FT_UINT16, BASE_HEX | BASE_RANGE_STRING, RVALS(zbee_aps_cid_names),
             0x00, NULL, HFILL } },
 
         { &hf_zbee_zcl_part_ack_opt,
@@ -10776,7 +10815,7 @@ void proto_register_zbee_zcl_ota(void)
             0x0, NULL, HFILL } },
 
         { &hf_zbee_zcl_ota_file_offset,
-            { "File Offset", "zbee_zcl_general.ota.file.offset", FT_UINT32, BASE_HEX, NULL,
+            { "File Offset", "zbee_zcl_general.ota.file.offset", FT_UINT32, BASE_DEC, NULL,
             0x0, NULL, HFILL } },
 
         { &hf_zbee_zcl_ota_max_data_size,
@@ -13398,43 +13437,43 @@ static gint hf_zbee_gp_tmp_master_short_addr = -1;
 static gint hf_zbee_gp_cmd_resp_tx_channel = -1;
 
 /* GP_PAIRING_CONFIGURATION */
-static guint hf_zbee_gp_cmd_pc_actions_action = -1;
-static guint hf_zbee_gp_cmd_pc_actions_send_gp_pairing = -1;
-static guint hf_zbee_gp_cmd_pc_opt_app_id = -1;
-static guint hf_zbee_gp_cmd_pc_opt_communication_mode = -1;
-static guint hf_zbee_gp_cmd_pc_opt_seq_number_cap = -1;
-static guint hf_zbee_gp_cmd_px_opt_rx_on_cap = -1;
-static guint hf_zbee_gp_cmd_pc_opt_fixed_location = -1;
-static guint hf_zbee_gp_cmd_pc_opt_assigned_alias = -1;
-static guint hf_zbee_gp_cmd_pc_opt_security_use = -1;
-static guint hf_zbee_gp_cmd_pc_opt_app_info_present = -1;
-static guint hf_zbee_gp_cmd_pc_secur_level = -1;
-static guint hf_zbee_gp_cmd_pc_secur_key_type = -1;
-static guint hf_zbee_gp_cmd_pc_app_info_manuf_id_present = -1;
-static guint hf_zbee_gp_cmd_pc_app_info_model_id_present = -1;
-static guint hf_zbee_gp_cmd_pc_app_info_gpd_commands_present = -1;
-static guint hf_zbee_gp_cmd_pc_app_info_cluster_list_present = -1;
-static guint hf_zbee_gp_cmd_pc_actions = -1;
+static int hf_zbee_gp_cmd_pc_actions_action = -1;
+static int hf_zbee_gp_cmd_pc_actions_send_gp_pairing = -1;
+static int hf_zbee_gp_cmd_pc_opt_app_id = -1;
+static int hf_zbee_gp_cmd_pc_opt_communication_mode = -1;
+static int hf_zbee_gp_cmd_pc_opt_seq_number_cap = -1;
+static int hf_zbee_gp_cmd_px_opt_rx_on_cap = -1;
+static int hf_zbee_gp_cmd_pc_opt_fixed_location = -1;
+static int hf_zbee_gp_cmd_pc_opt_assigned_alias = -1;
+static int hf_zbee_gp_cmd_pc_opt_security_use = -1;
+static int hf_zbee_gp_cmd_pc_opt_app_info_present = -1;
+static int hf_zbee_gp_cmd_pc_secur_level = -1;
+static int hf_zbee_gp_cmd_pc_secur_key_type = -1;
+static int hf_zbee_gp_cmd_pc_app_info_manuf_id_present = -1;
+static int hf_zbee_gp_cmd_pc_app_info_model_id_present = -1;
+static int hf_zbee_gp_cmd_pc_app_info_gpd_commands_present = -1;
+static int hf_zbee_gp_cmd_pc_app_info_cluster_list_present = -1;
+static int hf_zbee_gp_cmd_pc_actions = -1;
 static guint ett_zbee_gp_cmd_pc_actions = -1;
-static guint hf_zbee_gp_cmd_pc_options = -1;
+static int hf_zbee_gp_cmd_pc_options = -1;
 static guint ett_zbee_gp_cmd_pc_options = -1;
 static guint ett_zbee_zcl_gp_group_list = -1;
-static guint hf_zbee_gp_group_list_len = -1;
-static guint hf_zbee_gp_group_list_group_id = -1;
-static guint hf_zbee_gp_group_list_alias = -1;
-static guint hf_zbee_gp_cmd_pc_secur_options = -1;
+static int hf_zbee_gp_group_list_len = -1;
+static int hf_zbee_gp_group_list_group_id = -1;
+static int hf_zbee_gp_group_list_alias = -1;
+static int hf_zbee_gp_cmd_pc_secur_options = -1;
 static guint ett_zbee_gp_cmd_pc_secur_options = -1;
-static guint hf_zbee_gp_n_paired_endpoints = -1;
-static guint hf_zbee_gp_paired_endpoint = -1;
-static guint hf_zbee_gp_cmd_pc_app_info = -1;
+static int hf_zbee_gp_n_paired_endpoints = -1;
+static int hf_zbee_gp_paired_endpoint = -1;
+static int hf_zbee_gp_cmd_pc_app_info = -1;
 static guint ett_zbee_gp_cmd_pc_app_info = -1;
-static guint hf_zbee_zcl_gp_manufacturer_id = -1;
-static guint hf_zbee_zcl_gp_model_id = -1;
-static guint hf_zbee_gp_n_gpd_commands = -1;
-static guint hf_zbee_gp_gpd_command = -1;
-static guint hf_zbee_gp_n_srv_clusters = -1;
-static guint hf_zbee_gp_n_cli_clusters = -1;
-static guint hf_zbee_gp_gpd_cluster_id = -1;
+static int hf_zbee_zcl_gp_manufacturer_id = -1;
+static int hf_zbee_zcl_gp_model_id = -1;
+static int hf_zbee_gp_n_gpd_commands = -1;
+static int hf_zbee_gp_gpd_command = -1;
+static int hf_zbee_gp_n_srv_clusters = -1;
+static int hf_zbee_gp_n_cli_clusters = -1;
+static int hf_zbee_gp_gpd_cluster_id = -1;
 static guint ett_zbee_zcl_gp_ep = -1;
 static guint ett_zbee_zcl_gp_cmds = -1;
 static guint ett_zbee_zcl_gp_clusters = -1;
@@ -13443,16 +13482,16 @@ static guint ett_zbee_zcl_gp_cli_clusters = -1;
 
 /* GP_SINK_TABLE_REQUEST and GP_PROXY_TABLE_REQUEST */
 static guint ett_zbee_zcl_proxy_sink_tbl_req_options = -1;
-static guint hf_zbee_zcl_proxy_sink_tbl_req_options = -1;
-static guint hf_zbee_zcl_proxy_sink_tbl_req_fld_app_id = -1;
-static guint hf_zbee_zcl_proxy_sink_tbl_req_fld_req_type = -1;
-static guint hf_zbee_zcl_proxy_sink_tbl_req_index = -1;
+static int hf_zbee_zcl_proxy_sink_tbl_req_options = -1;
+static int hf_zbee_zcl_proxy_sink_tbl_req_fld_app_id = -1;
+static int hf_zbee_zcl_proxy_sink_tbl_req_fld_req_type = -1;
+static int hf_zbee_zcl_proxy_sink_tbl_req_index = -1;
 
 /* GP_SINK_TABLE_RESPONSE and GP_PROXY_TABLE_RESPONSE */
-static guint hf_zbee_zcl_proxy_sink_tbl_resp_status = -1;
-static guint hf_zbee_zcl_proxy_sink_tbl_resp_entries_total = -1;
-static guint hf_zbee_zcl_proxy_sink_tbl_resp_start_index = -1;
-static guint hf_zbee_zcl_proxy_sink_tbl_resp_entries_count = -1;
+static int hf_zbee_zcl_proxy_sink_tbl_resp_status = -1;
+static int hf_zbee_zcl_proxy_sink_tbl_resp_entries_total = -1;
+static int hf_zbee_zcl_proxy_sink_tbl_resp_start_index = -1;
+static int hf_zbee_zcl_proxy_sink_tbl_resp_entries_count = -1;
 
 /* GP SINK_COMMISSIONING_MODE */
 static gint ett_zbee_zcl_gp_cmd_sink_comm_mode_options = -1;
@@ -13643,8 +13682,6 @@ dissect_zbee_zcl_gp_payload(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
         tvb_composite_finalize(gtvb);
         /* prevent overwriting COL_INFO */
         col_set_writable(pinfo->cinfo, COL_INFO, FALSE);
-        /* Actually dissect_zbee_nwk_gp_cmd wants zbee_nwk_green_power_packet*
-         * as a data but never uses it. */
         call_dissector_only(zgp_handle, gtvb, pinfo, tree, NULL);
         col_set_writable(pinfo->cinfo, COL_INFO, writable);
         offset += payload_size;
@@ -15279,7 +15316,7 @@ proto_register_zbee_zcl_gp(void)
           { "Number of Client clusters", "zbee_zcl_general.gp.pc.n_srv_clusters", FT_UINT8, BASE_DEC,
             NULL, ZBEE_ZCL_GP_CLUSTER_LIST_LEN_CLI, NULL, HFILL }},
         { &hf_zbee_gp_gpd_cluster_id,
-          { "Cluster ID", "zbee_zcl_general.gp.pc.cluster", FT_UINT8, BASE_HEX, VALS(zbee_aps_cid_names),
+          { "Cluster ID", "zbee_zcl_general.gp.pc.cluster", FT_UINT8, BASE_HEX | BASE_RANGE_STRING, RVALS(zbee_aps_cid_names),
             0x0, NULL, HFILL }},
 
         /* GP Sink Table Request and  GP Proxy Table Request commands */
@@ -16505,7 +16542,7 @@ proto_reg_handoff_zbee_zcl_touchlink(void)
 } /*proto_reg_handoff_zbee_zcl_touchlink*/
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 4

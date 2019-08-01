@@ -566,6 +566,8 @@ static const value_string sccp_isni_ti_values [] = {
   { ANSI_ISNI_TYPE_1,   "Type one ISNI parameter format" },
   { 0,                  NULL } };
 
+/* Laded from e212 hf*/
+static int hf_assoc_imsi = -1;
 
 /* Initialize the protocol and registered fields */
 static int proto_sccp = -1;
@@ -797,7 +799,7 @@ static heur_dissector_list_t heur_subdissector_list;
 static dissector_table_t sccp_ssn_dissector_table;
 
 static wmem_tree_t       *assocs        = NULL;
-static sccp_assoc_info_t  no_assoc      = {0,0,0,INVALID_SSN,INVALID_SSN,FALSE,FALSE,NULL,NULL,SCCP_PLOAD_NONE,NULL,NULL,NULL,0};
+static sccp_assoc_info_t  no_assoc = { 0,0,0,INVALID_SSN,INVALID_SSN,FALSE,FALSE,NULL,NULL,SCCP_PLOAD_NONE,NULL,NULL,NULL, NULL, 0 };
 static guint32            next_assoc_id = 0;
 
 static const value_string assoc_protos[] = {
@@ -1443,6 +1445,7 @@ new_assoc(guint32 calling, guint32 called)
   a->calling_party = NULL;
   a->called_party  = NULL;
   a->extra_info    = NULL;
+  a->imsi = NULL;
 
   return a;
 }
@@ -1642,6 +1645,7 @@ get_sccp_assoc(packet_info *pinfo, guint offset, sccp_decode_context_t* value)
       msg->data.co.assoc = value->assoc;
       msg->data.co.label = NULL;
       msg->data.co.comment = NULL;
+      msg->data.co.imsi = NULL;
       msg->type = value->message_type;
 
       if (value->assoc->msgs) {
@@ -1659,6 +1663,9 @@ get_sccp_assoc(packet_info *pinfo, guint offset, sccp_decode_context_t* value)
       sccp_msg_info_t *m;
 
       for (m = value->assoc->msgs; m; m = m->data.co.next) {
+        if (m->data.co.imsi != NULL && value->assoc->imsi == NULL) {
+          value->assoc->imsi = wmem_strdup(wmem_epan_scope(), m->data.co.imsi);
+        }
         if ((m->framenum == framenum) && (m->offset == offset)) {
           value->assoc->curr_msg = m;
           break;
@@ -1704,7 +1711,7 @@ dissect_sccp_dlr_param(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, guin
   sccp_info->dlr = tvb_get_letoh24(tvb, 0);
   proto_tree_add_uint(tree, hf_sccp_dlr, tvb, 0, length, sccp_info->dlr);
   lr_item = proto_tree_add_uint(tree, hf_sccp_lr, tvb, 0, length, sccp_info->dlr);
-  PROTO_ITEM_SET_HIDDEN(lr_item);
+  proto_item_set_generated(lr_item);
 
   if (show_key_params)
     col_append_fstr(pinfo->cinfo, COL_INFO, "DLR=%d ", sccp_info->dlr);
@@ -1724,7 +1731,7 @@ dissect_sccp_slr_param(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, guin
   sccp_info->slr = tvb_get_letoh24(tvb, 0);
   proto_tree_add_uint(tree, hf_sccp_slr, tvb, 0, length, sccp_info->slr);
   lr_item = proto_tree_add_uint(tree, hf_sccp_lr, tvb, 0, length, sccp_info->slr);
-  PROTO_ITEM_SET_HIDDEN(lr_item);
+  proto_item_set_generated(lr_item);
 
   if (show_key_params)
     col_append_fstr(pinfo->cinfo, COL_INFO, "SLR=%d ", sccp_info->slr);
@@ -1808,7 +1815,7 @@ dissect_sccp_global_title(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, g
                                 "Global Title 0x%x (%u byte%s)",
                                 gti, length, plurality(length,"", "s"));
 
-  /* Decode Transation Type (if present) */
+  /* Decode Transaction Type (if present) */
   if ((gti == AI_GTI_TT) ||
       ((decode_mtp3_standard != ANSI_STANDARD) &&
        ((gti == ITU_AI_GTI_TT_NP_ES) || (gti == ITU_AI_GTI_TT_NP_ES_NAI))) ||
@@ -2074,7 +2081,7 @@ dissect_sccp_called_calling_param(tvbuff_t *tvb, proto_tree *tree, packet_info *
                           tvb, offset, ADDRESS_SSN_LENGTH, ssn);
       hidden_item = proto_tree_add_uint(call_tree, hf_sccp_ssn, tvb, offset,
                                         ADDRESS_SSN_LENGTH, ssn);
-      PROTO_ITEM_SET_HIDDEN(hidden_item);
+      proto_item_set_hidden(hidden_item);
 
       offset += ADDRESS_SSN_LENGTH;
 
@@ -2089,7 +2096,7 @@ dissect_sccp_called_calling_param(tvbuff_t *tvb, proto_tree *tree, packet_info *
         if (ssn_dissector_short_name) {
           item = proto_tree_add_string_format(call_tree, hf_sccp_linked_dissector, tvb, offset - 1, ADDRESS_SSN_LENGTH,
                                      ssn_dissector_short_name, "Linked to %s", ssn_dissector_short_name);
-          PROTO_ITEM_SET_GENERATED(item);
+          proto_item_set_generated(item);
 
           if (g_ascii_strncasecmp("TCAP", ssn_dissector_short_name, 4)== 0) {
             tcap_ssn_dissector = get_itu_tcap_subdissector(ssn);
@@ -2159,7 +2166,7 @@ dissect_sccp_called_calling_param(tvbuff_t *tvb, proto_tree *tree, packet_info *
                           tvb, offset, ADDRESS_SSN_LENGTH, ssn);
       hidden_item = proto_tree_add_uint(call_tree, hf_sccp_ssn, tvb, offset,
                                         ADDRESS_SSN_LENGTH, ssn);
-      PROTO_ITEM_SET_HIDDEN(hidden_item);
+      proto_item_set_hidden(hidden_item);
 
       offset += ADDRESS_SSN_LENGTH;
     }
@@ -2764,7 +2771,7 @@ dissect_sccp_variable_parameter(tvbuff_t *tvb, packet_info *pinfo,
                                   parameter_length);
   if (!sccp_show_length) {
     /* The user doesn't want to see it... */
-    PROTO_ITEM_SET_HIDDEN(pi);
+    proto_item_set_hidden(pi);
   }
 
   offset += length_length;
@@ -2816,8 +2823,12 @@ static void build_assoc_tree(tvbuff_t *tvb, packet_info *pinfo, proto_tree *sccp
 {
   if (trace_sccp && sccp_info->assoc && (sccp_info->assoc != &no_assoc)) {
     proto_item *pi = proto_tree_add_uint(sccp_tree, hf_sccp_assoc_id, tvb, 0, 0, sccp_info->assoc->id);
+    proto_item_set_generated(pi);
     proto_tree *pt = proto_item_add_subtree(pi, ett_sccp_assoc);
-    PROTO_ITEM_SET_GENERATED(pi);
+    if(sccp_info->assoc->imsi){
+      proto_item *pi2 = proto_tree_add_string(sccp_tree, hf_assoc_imsi, tvb, 0, 0, sccp_info->assoc->imsi);
+      proto_item_set_generated(pi2);
+    }
     if (sccp_info->assoc->msgs) {
       sccp_msg_info_t *m;
       for(m = sccp_info->assoc->msgs; m ; m = m->data.co.next) {
@@ -2828,12 +2839,14 @@ static void build_assoc_tree(tvbuff_t *tvb, packet_info *pinfo, proto_tree *sccp
 
         if (m->data.co.label)
           proto_item_append_text(pi," %s", m->data.co.label);
+        if (m->data.co.imsi)
+          proto_item_append_text(pi, " %s", m->data.co.imsi);
 
         if ((m->framenum == pinfo->num) && (m->offset == msg_offset) ) {
           tap_queue_packet(sccp_tap, pinfo, m);
           proto_item_append_text(pi," (current)");
         }
-        PROTO_ITEM_SET_GENERATED(pi);
+        proto_item_set_generated(pi);
       }
     }
   }
@@ -4105,7 +4118,7 @@ proto_register_sccp(void)
   /* Decode As handling */
   static build_valid_func sccp_da_build_value[1] = {sccp_value};
   static decode_as_value_t sccp_da_values = {sccp_prompt, 1, sccp_da_build_value};
-  static decode_as_t sccp_da = {"sccp", "SCCP SSN", "sccp.ssn", 1, 0, &sccp_da_values, NULL, NULL,
+  static decode_as_t sccp_da = {"sccp", "sccp.ssn", 1, 0, &sccp_da_values, NULL, NULL,
                                     decode_as_default_populate_list, decode_as_default_reset, decode_as_default_change, NULL};
 
   module_t *sccp_module;
@@ -4219,13 +4232,14 @@ proto_reg_handoff_sccp(void)
     ss7pc_address_type = address_type_get_by_name("AT_SS7PC");
 
     initialised = TRUE;
+    hf_assoc_imsi = proto_registrar_get_id_byname("e212.assoc.imsi");
   }
 
   default_handle = find_dissector(default_payload);
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local Variables:
  * c-basic-offset: 2

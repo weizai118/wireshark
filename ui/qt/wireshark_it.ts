@@ -72,12 +72,39 @@
         <translation>Licenza</translation>
     </message>
     <message>
+        <source>The directory does not exist</source>
+        <translation>La cartella non esiste</translation>
+    </message>
+    <message>
+        <source>Should the directory %1 be created?</source>
+        <translation>Dovrebbe essere creata la cartella %1?</translation>
+    </message>
+    <message>
+        <source>The directory could not be created</source>
+        <translation>La cartella non può essere creata</translation>
+    </message>
+    <message>
+        <source>The directory %1 could not be created!</source>
+        <translation>La cartella %1 non può essere creata!</translation>
+    </message>
+    <message>
+        <source>Show in Finder</source>
+        <translation>Mostra in Finder</translation>
+    </message>
+    <message>
+        <source>Show in Folder</source>
+        <translation>Mostra in Finder</translation>
+    </message>
+    <message>
         <source>Copy</source>
         <translation>Copia</translation>
     </message>
-    <message>
+    <message numerus="yes">
         <source>Copy Row(s)</source>
-        <translation>Copia righe</translation>
+        <translation>
+            <numerusform>Copia riga</numerusform>
+            <numerusform>Copia righe</numerusform>
+        </translation>
     </message>
 </context>
 <context>
@@ -909,8 +936,16 @@
         <translation>Lunghezza</translation>
     </message>
     <message>
-        <source> (gzip compressed)</source>
-        <translation> (compresso con gzip)</translation>
+        <source>Hash (SHA256)</source>
+        <translation>Hash (SHA256)</translation>
+    </message>
+    <message>
+        <source>Hash (RIPEMD160)</source>
+        <translation>Hash (RIPEMD160)</translation>
+    </message>
+    <message>
+        <source>Hash (SHA1)</source>
+        <translation>Hash (SHA1)</translation>
     </message>
     <message>
         <source>Format</source>
@@ -1174,11 +1209,6 @@
         <translation>File:</translation>
     </message>
     <message>
-        <source>Create a new file automatically after…</source>
-        <oldsource>Create a new file automatically after...</oldsource>
-        <translation>Crea un nuovo file automaticamente dopo...</translation>
-    </message>
-    <message>
         <source>megabytes</source>
         <oldsource>Megabytes</oldsource>
         <translation>megabyte</translation>
@@ -1272,23 +1302,43 @@
         <translation>Cattura su un file permanente</translation>
     </message>
     <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Instead of using a single capture file, multiple files will be created.&lt;/p&gt;&lt;p&gt;The generated file names will contain an incrementing number and the start time of the capture.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Invece di usare un singolo file di cattura, saranno creati file multipli.&lt;/p&gt;&lt;p&gt;I nomi di file generati conterranno un numero incrementale e l&apos;orario di inizio della cattura.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If the selected file size is exceeded, capturing switches to the next file.&lt;/p&gt;&lt;p&gt;PLEASE NOTE: One option MUST be selected.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Se si supera la dimensione del file selezionata, la cattura passa al file successivo.&lt;/p&gt;&lt;p&gt;NOTA: un&apos;opzione DEVE essere selezionata.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>If the selected file size is exceeded, capturing switches to the next file.
-PLEASE NOTE: One option MUST be selected.</source>
-        <translation>Se si supera la dimensione del file selezionata, la cattura passa al file successivo.
-NOTA: un&apos;opzione DEVE essere selezionata.</translation>
-    </message>
-    <message>
         <source>gigabytes</source>
         <oldsource>Gigabytes</oldsource>
         <translation>gigabyte</translation>
+    </message>
+    <message>
+        <source>Switch to the next file after the specified number of packets have been captured.</source>
+        <translation>Passa al file successivo dopo aver catturato il numero di pacchetti specificato.</translation>
+    </message>
+    <message>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Instead of using a single capture file, multiple files will be created.&lt;/p&gt;&lt;p&gt;The generated file names will contain an incrementing number and the start time of the capture.&lt;/p&gt;&lt;p&gt;NOTE: If enabled, at least one of the new-file criteria MUST be selected.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Invece di usare un singolo file di cattura, saranno creati file multipli.&lt;/p&gt;&lt;p&gt;I nomi di file generati conterranno un numero incrementale e l&apos;orario di inizio della cattura.&lt;/p&gt;&lt;p&gt;NOTA: se abilitata, almeno uno dei criteri per i nuovi file deve essere selezionato.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <source>Create a new file automatically…</source>
+        <translation>Crea un nuovo file automaticamente</translation>
+    </message>
+    <message>
+        <source>after</source>
+        <translation>dopo</translation>
+    </message>
+    <message>
+        <source>Switch to the next file after the file size exceeds the specified file size.</source>
+        <translation>Passa al file successivo quando la dimensione dei file supera la dimensione dei file specificata.</translation>
+    </message>
+    <message>
+        <source>Switch to the next file when the time capturing to the current file exceeds the specified time.</source>
+        <translation>Passa al file successivo quando il tempo di cattura del file corrente supera il tempo specificato.</translation>
+    </message>
+    <message>
+        <source>when time is a multiple of</source>
+        <translation>quando il tempo è un multiplo di</translation>
+    </message>
+    <message>
+        <source>Switch to the next file when the (wall clock) time is an even multiple of the specified interval.
+For example, use 1 hour to have a new file created every hour on the hour.</source>
+        <translation>Passa al file successivo quando l&apos;ora (orolgio a muro) è un multiplo pari dell&apos;intervallo specificato.
+Ad esempio, usa 1 ora per fare in modo che un nuovo file sia creato ogni ora.</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;After capturing has switched to the next file and the given number of files has exceeded, the oldest file will be removed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -1422,11 +1472,8 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
         <translation>File multipli: non è stato fornito un nome del file di cattura! Devi specificare un nome del file se vuoi usare file multipli.</translation>
     </message>
     <message>
-        <source>Multiple files: No file limit given. You must specify a file size or interval at which is switched to the next capture file
- if you want to use multiple files.</source>
-        <oldsource>Multiple files: No file limit given. You must specify a file size or duration at which is switched to the next capture file
- if you want to use multiple files.</oldsource>
-        <translation>File multipli: non è stato fornito alcun limite di file. Devi specificare una dimensione del file o l&apos;intervallo trascorso il quale si passa al successivo file di cattura se vuoi utilizzare diversi file.</translation>
+        <source>Multiple files: No file limit given. You must specify a file size, interval, or number of packets for each file.</source>
+        <translation>File multipli: non è stato fornito alcun limite di file. Devi specificare una dimensione del file, l&apos;intervallo o il numero di pacchetti per ogni file.</translation>
     </message>
 </context>
 <context>
@@ -1472,6 +1519,10 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
         <translation>Scorrimento automatico durante la cattura</translation>
     </message>
     <message>
+        <source>Don&apos;t load interfaces on startup</source>
+        <translation>Non caricare le interfacce all&apos;avvio</translation>
+    </message>
+    <message>
         <source>Disable external capture interfaces</source>
         <translation>Disabilita le interfacce di cattura esterne</translation>
     </message>
@@ -1504,6 +1555,10 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
     <message>
         <source>Duplicate this coloring rule.</source>
         <translation>Duplica questa regola di colorazione.</translation>
+    </message>
+    <message>
+        <source>Clear all coloring rules.</source>
+        <translation>Cancella tutte le regole di colorazione.</translation>
     </message>
     <message>
         <source>Set the foreground color for this rule.</source>
@@ -1548,6 +1603,18 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
     <message>
         <source>Coloring Rules %1</source>
         <translation>Regole di colorazione %1</translation>
+    </message>
+    <message>
+        <source>Copy from</source>
+        <translation>Copia da</translation>
+    </message>
+    <message>
+        <source>Copy coloring rules from another profile.</source>
+        <translation>Copia regole di colorazione da un altro profilo.</translation>
+    </message>
+    <message>
+        <source>Open </source>
+        <translation>Apri </translation>
     </message>
     <message>
         <source>Double click to edit. Drag to move. Rules are processed in order until a match is found.</source>
@@ -1696,8 +1763,57 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
         <translation>Finestra</translation>
     </message>
     <message>
-        <source>Dissector Tables</source>
-        <translation>Tabelle decodificatori</translation>
+        <source>Conversation Hash Tables</source>
+        <translation>Tabella hash di conversazione</translation>
+    </message>
+</context>
+<context>
+    <name>CopyFromProfileMenu</name>
+    <message>
+        <source>System default</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CredentialsDialog</name>
+    <message>
+        <source>Wireshark - Credentials</source>
+        <translation>Wireshark - Credenziali</translation>
+    </message>
+    <message>
+        <source>Credentials</source>
+        <translation>Credenziali</translation>
+    </message>
+</context>
+<context>
+    <name>CredentialsModel</name>
+    <message>
+        <source>Click to select the packet</source>
+        <translation>Fai clic per selezionare il pacchetto</translation>
+    </message>
+    <message>
+        <source>Click to select the packet with username</source>
+        <translation>Fai clic per selezionare il pacchetto con il nome utente</translation>
+    </message>
+    <message>
+        <source>Username not available</source>
+        <translation>Nome utente non disponibile</translation>
+    </message>
+    <message>
+        <source>Packet No.</source>
+        <translation>Pacchetto n.</translation>
+    </message>
+    <message>
+        <source>Protocol</source>
+        <translation>Protocollo</translation>
+    </message>
+    <message>
+        <source>Username</source>
+        <translation>Nome utente</translation>
+    </message>
+    <message>
+        <source>Additional Info</source>
+        <translation>Informazioni aggiuntive</translation>
     </message>
 </context>
 <context>
@@ -1746,8 +1862,16 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
         <translation>Copia il comportamento di questa decodifica.</translation>
     </message>
     <message>
+        <source>Clear all dissection behaviors.</source>
+        <translation>Cancella tutti i comportamenti delle decodifiche.</translation>
+    </message>
+    <message>
         <source>Decode As</source>
         <translation>Decodifica come</translation>
+    </message>
+    <message>
+        <source>Open </source>
+        <translation>Apri </translation>
     </message>
 </context>
 <context>
@@ -1865,6 +1989,14 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
     <message>
         <source>Manage Filter Expressions</source>
         <translation>Gestisci espressioni di filtro</translation>
+    </message>
+    <message>
+        <source>Selected</source>
+        <translation>Selezionati</translation>
+    </message>
+    <message>
+        <source>Not Selected</source>
+        <translation>Non selezionati</translation>
     </message>
 </context>
 <context>
@@ -2036,6 +2168,45 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
     <message>
         <source>Description</source>
         <translation>Descrizione</translation>
+    </message>
+</context>
+<context>
+    <name>EndpointDialog</name>
+    <message>
+        <source>Map</source>
+        <translation>Mappa</translation>
+    </message>
+    <message>
+        <source>Draw IPv4 or IPv6 endpoints on a map.</source>
+        <translation>Disegna i terminatori IPv4 o IPv6 su una mappa.</translation>
+    </message>
+    <message>
+        <source>Open in browser</source>
+        <translation>Apri nel browser</translation>
+    </message>
+    <message>
+        <source>Save As</source>
+        <translation>Salva come</translation>
+    </message>
+    <message>
+        <source>Map file error</source>
+        <translation>Errore nel file di mappa</translation>
+    </message>
+    <message>
+        <source>No endpoints available to map</source>
+        <translation>Nessun terminatore disponibile per la mappa</translation>
+    </message>
+    <message>
+        <source>Unable to create temporary file</source>
+        <translation>Impossibile creare il file temporaneo</translation>
+    </message>
+    <message>
+        <source>Save Endpoints Map</source>
+        <translation>Salva mappa dei terminatori</translation>
+    </message>
+    <message>
+        <source>Failed to save map file %1.</source>
+        <translation>Impossibile salvare il file di mappa %1.</translation>
     </message>
 </context>
 <context>
@@ -2217,6 +2388,14 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
         <translation>Ricerca oggetti</translation>
     </message>
     <message>
+        <source>Text Filter:</source>
+        <translation>Filtro di testo:</translation>
+    </message>
+    <message>
+        <source>Only display entries containing this string</source>
+        <translation>Visualizza solo le voci che contengono questa stringa</translation>
+    </message>
+    <message>
         <source>Export</source>
         <translation>Esporta</translation>
     </message>
@@ -2231,14 +2410,6 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
     <message>
         <source>Save All Objects In</source>
         <translation>Salva tutti gli oggetti in</translation>
-    </message>
-    <message>
-        <source>Object Export</source>
-        <translation>Esporta oggetti</translation>
-    </message>
-    <message>
-        <source>Some files could not be saved.</source>
-        <translation>Alcuni file non possono essere salvati.</translation>
     </message>
 </context>
 <context>
@@ -2423,6 +2594,10 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
         <translation>Filtri di visualizzazione</translation>
     </message>
     <message>
+        <source>Open </source>
+        <translation>Apri </translation>
+    </message>
+    <message>
         <source>New filter</source>
         <translation>Nuovo filtro</translation>
     </message>
@@ -2482,6 +2657,25 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
     <message>
         <source>Invalid filter expression.</source>
         <translation>Espressioni di filtro non valida.</translation>
+    </message>
+</context>
+<context>
+    <name>FilterExpressionToolBar</name>
+    <message>
+        <source>Filter Button Preferences...</source>
+        <translation>Preferenze pulsante di filtro...</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>Modifica</translation>
+    </message>
+    <message>
+        <source>Disable</source>
+        <translation>Disabilita</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Rimuovi</translation>
     </message>
 </context>
 <context>
@@ -2872,6 +3066,14 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
         <translation>Colori:</translation>
     </message>
     <message>
+        <source>System Default</source>
+        <translation>Predefinito di sistema</translation>
+    </message>
+    <message>
+        <source>Solid</source>
+        <translation>Solido</translation>
+    </message>
+    <message>
         <source>Sample ignored packet text</source>
         <translation>Esempio di testo per pacchetto ignorato</translation>
     </message>
@@ -2886,14 +3088,6 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
     <message>
         <source>Style:</source>
         <translation>Stile</translation>
-    </message>
-    <message>
-        <source>Default</source>
-        <translation>Predefinito</translation>
-    </message>
-    <message>
-        <source>Flat</source>
-        <translation>Piatto</translation>
     </message>
     <message>
         <source>Gradient</source>
@@ -2972,10 +3166,6 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
     <message>
         <source>Length</source>
         <translation>Lunghezza</translation>
-    </message>
-    <message>
-        <source> (gzip compressed)</source>
-        <translation> (compresso con gzip)</translation>
     </message>
     <message>
         <source>Format</source>
@@ -3172,6 +3362,10 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
     <message>
         <source>Duplicate this graph.</source>
         <translation>Duplica questo grafico.</translation>
+    </message>
+    <message>
+        <source>Clear all graphs.</source>
+        <translation>Cancella tutti i grafici.</translation>
     </message>
     <message>
         <source>Mouse</source>
@@ -3412,16 +3606,28 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
         <translation>Tempo (s)</translation>
     </message>
     <message>
-        <source>IO Graphs</source>
-        <translation>Grafici IO</translation>
+        <source>I/O Graphs</source>
+        <translation>Grafici I/O</translation>
     </message>
     <message>
         <source>Copy</source>
         <translation>Copia</translation>
     </message>
     <message>
+        <source>Copy from</source>
+        <translation>Copia da</translation>
+    </message>
+    <message>
+        <source>Copy graphs from another profile.</source>
+        <translation>Copia grafici da un altro profilo.</translation>
+    </message>
+    <message>
         <source>1 ms</source>
         <translation>1 ms</translation>
+    </message>
+    <message>
+        <source>5 ms</source>
+        <translation>5 ms</translation>
     </message>
     <message>
         <source>10 ms</source>
@@ -3432,8 +3638,8 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
         <translation>100 ms</translation>
     </message>
     <message>
-        <source>Wireshark IO Graphs: %1</source>
-        <translation>Grafici di IO di Wireshark: %1</translation>
+        <source>Wireshark I/O Graphs: %1</source>
+        <translation>Grafici di I/O di Wireshark: %1</translation>
     </message>
     <message>
         <source>All packets</source>
@@ -3827,12 +4033,16 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
         <translation>Indicazione della direzione:</translation>
     </message>
     <message>
-        <source>Maximum frame length:</source>
-        <translation>Lunghezza massima del frame:</translation>
+        <source>ExportPDU</source>
+        <translation>EsportaPDU</translation>
     </message>
     <message>
-        <source>The maximum size of the frames to write to the import capture file (max 64000)</source>
-        <translation>Dimensione massima dei frame da scrivere sul file di importazione della cattura (max 64000)</translation>
+        <source>Payload</source>
+        <translation>Payload</translation>
+    </message>
+    <message>
+        <source>Maximum frame length:</source>
+        <translation>Lunghezza massima del frame:</translation>
     </message>
     <message>
         <source>Encapsulation</source>
@@ -3957,6 +4167,10 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
     <message>
         <source>IPv4</source>
         <translation>IPv4</translation>
+    </message>
+    <message>
+        <source>The maximum size of the frames to write to the import capture file (max 256kiB)</source>
+        <translation>La dimensione massima dei frame da scrivere sul file di importazione della cattura (max 256kiB)</translation>
     </message>
     <message>
         <source>Import From Hex Dump</source>
@@ -5472,6 +5686,14 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
         <translation>Gestisci i profili</translation>
     </message>
     <message>
+        <source>Import</source>
+        <translation>Importa</translation>
+    </message>
+    <message>
+        <source>Export</source>
+        <translation type="unfinished">Esporta</translation>
+    </message>
+    <message>
         <source>New</source>
         <oldsource>New...</oldsource>
         <translation>Nuovo</translation>
@@ -5568,200 +5790,13 @@ NOTA: un&apos;opzione DEVE essere selezionata.</translation>
 </context>
 <context>
     <name>MainWelcome</name>
-    <message>
-        <source>Form</source>
-        <translation type="vanished">Modulo</translation>
-    </message>
-    <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:large;&quot;&gt;Welcome to Wireshark&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:large;&quot;&gt;Benvenuto in Wireshark&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Open a file on your file system&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Apri un file sul tuo file system&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>&lt;h2&gt;Open&lt;/h2&gt;</source>
-        <translation type="vanished">&lt;h2&gt;Apri&lt;/h2&gt;</translation>
-    </message>
-    <message>
-        <source>Recent capture files</source>
-        <translation type="vanished">File di cattura recenti</translation>
-    </message>
-    <message>
-        <source>Capture files that have been opened previously</source>
-        <translation type="vanished">I file di cattura che sono stati aperti precedentemente</translation>
-    </message>
-    <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Capture live packets from your network.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="vanished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Cattura i pacchetti live dalla tua rete.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>&lt;h2&gt;Capture&lt;/h2&gt;</source>
-        <translation type="vanished">&lt;h2&gt;Cattura&lt;/h2&gt;</translation>
-    </message>
-    <message>
-        <source>…using this filter:</source>
-        <translation type="vanished">...usando questo filtro:</translation>
-    </message>
-    <message>
-        <source>Interface list</source>
-        <translation type="vanished">Elenco delle interfacce</translation>
-    </message>
-    <message>
-        <source>List of available capture interfaces</source>
-        <translation type="vanished">Elenco delle interfacce di cattura disponibili</translation>
-    </message>
-    <message>
-        <source>&lt;h2&gt;Learn&lt;/h2&gt;</source>
-        <translation type="vanished">&lt;h2&gt;Impara&lt;/h2&gt;</translation>
-    </message>
-    <message>
-        <source>&lt;html&gt;&lt;head&gt;
-&lt;style&gt;
-a:link {
-  color: inherit;
-  text-decoration: none;
-}
-a:hover {
-  color: inherit;
-  text-decoration: underline;
-}
-&lt;/style&gt;
-&lt;/head&gt;
-&lt;body&gt;
-
-&lt;table&gt;&lt;tr&gt;
-&lt;th&gt;&lt;a href=&quot;https://www.wireshark.org/docs/wsug_html_chunked/&quot;&gt;User&apos;s Guide&lt;/a&gt;&lt;/th&gt;
-
-&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
-
-&lt;th&gt;&lt;a href=&quot;https://wiki.wireshark.org/&quot;&gt;Wiki&lt;/a&gt;&lt;/th&gt;
-
-&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
-
-&lt;th&gt;&lt;a href=&quot;https://ask.wireshark.org/&quot;&gt;Questions and Answers&lt;/a&gt;&lt;/th&gt;
-
-&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
-
-&lt;th&gt;&lt;a href=&quot;https://www.wireshark.org/lists/&quot;&gt;Mailing Lists&lt;/a&gt;&lt;/th&gt;
-
-&lt;/tr&gt;&lt;/table&gt;
-&lt;/body&gt;&lt;/html&gt;</source>
-        <oldsource>&lt;html&gt;&lt;head&gt;
-&lt;style&gt;
-a:link {
-  color: inherit;
-  text-decoration: none;
-}
-a:hover {
-  color: inherit;
-  text-decoration: underline;
-}
-&lt;/style&gt;
-&lt;/head&gt;
-&lt;body&gt;
-
-&lt;table&gt;&lt;tr&gt;
-&lt;th&gt;&lt;a href=&quot;http://www.wireshark.org/docs/wsug_html_chunked/&quot;&gt;User&apos;s Guide&lt;/a&gt;&lt;/th&gt;
-
-&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
-
-&lt;th&gt;&lt;a href=&quot;http://wiki.wireshark.org/&quot;&gt;Wiki&lt;/a&gt;&lt;/th&gt;
-
-&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
-
-&lt;th&gt;&lt;a href=&quot;http://ask.wireshark.org/&quot;&gt;Questions and Answers&lt;/a&gt;&lt;/th&gt;
-
-&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
-
-&lt;th&gt;&lt;a href=&quot;http://www.wireshark.org/lists/&quot;&gt;Mailing Lists&lt;/a&gt;&lt;/th&gt;
-
-&lt;/tr&gt;&lt;/table&gt;
-&lt;/body&gt;&lt;/html&gt;</oldsource>
-        <translation type="vanished">&lt;html&gt;&lt;head&gt;
-&lt;style&gt;
-a:link {
-  color: inherit;
-  text-decoration: none;
-}
-a:hover {
-  color: inherit;
-  text-decoration: underline;
-}
-&lt;/style&gt;
-&lt;/head&gt;
-&lt;body&gt;
-
-&lt;table&gt;&lt;tr&gt;
-&lt;th&gt;&lt;a href=&quot;https://www.wireshark.org/docs/wsug_html_chunked/&quot;&gt;Manuale utente&lt;/a&gt;&lt;/th&gt;
-
-&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
-
-&lt;th&gt;&lt;a href=&quot;https://wiki.wireshark.org/&quot;&gt;Wiki&lt;/a&gt;&lt;/th&gt;
-
-&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
-
-&lt;th&gt;&lt;a href=&quot;https://ask.wireshark.org/&quot;&gt;Domande e risposte&lt;/a&gt;&lt;/th&gt;
-
-&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
-
-&lt;th&gt;&lt;a href=&quot;https://www.wireshark.org/lists/&quot;&gt;Mailing list&lt;/a&gt;&lt;/th&gt;
-
-&lt;/tr&gt;&lt;/table&gt;
-&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>Show in Finder</source>
-        <translation type="vanished">Mostra in Finder</translation>
-    </message>
-    <message>
-        <source>Show in Folder</source>
-        <translation type="vanished">Mostra nella cartella</translation>
-    </message>
-    <message>
-        <source>All interfaces shown</source>
-        <translation type="vanished">Tutte le interfacce mostrate</translation>
-    </message>
     <message numerus="yes">
         <source>%n interface(s) shown, %1 hidden</source>
         <oldsource>%Ln interface(s) shown</oldsource>
-        <translation type="vanished">
-            <numerusform>%n interfaccia mostrata, %1 nascosta</numerusform>
-            <numerusform>%n interfacce mostrate, %1 nascoste</numerusform>
+        <translation type="obsolete">
+            <numerusform>%n interface shown, %1 hidden</numerusform>
+            <numerusform>%n interfaces shown, %1 hidden</numerusform>
         </translation>
-    </message>
-    <message>
-        <source>You are sniffing the glue that holds the Internet together using Wireshark </source>
-        <translation type="vanished">Stai annusando la colla che tiene insieme Internet con Wireshark</translation>
-    </message>
-    <message>
-        <source>You are running Wireshark </source>
-        <translation type="vanished">Stai eseguendo Wireshark </translation>
-    </message>
-    <message>
-        <source>.</source>
-        <translation type="vanished">.</translation>
-    </message>
-    <message>
-        <source> You receive automatic updates.</source>
-        <translation type="vanished"> Ricevi aggiornamenti automatici.</translation>
-    </message>
-    <message>
-        <source> You have disabled automatic updates.</source>
-        <translation type="vanished">Hai disabilitato gli aggiornamenti automatici.</translation>
-    </message>
-    <message>
-        <source>not found</source>
-        <translation type="vanished">non trovato</translation>
-    </message>
-    <message>
-        <source>Copy file path</source>
-        <translation type="vanished">Copia percorso del file</translation>
-    </message>
-    <message>
-        <source>Remove</source>
-        <translation type="vanished">Rimuovi</translation>
     </message>
 </context>
 <context>
@@ -5777,10 +5812,6 @@ a:hover {
     <message>
         <source>Cancel</source>
         <translation>Annulla</translation>
-    </message>
-    <message>
-        <source>Open Recent</source>
-        <translation>Apri recenti</translation>
     </message>
     <message>
         <source>File Set</source>
@@ -5801,10 +5832,6 @@ a:hover {
     <message>
         <source>&amp;Time Display Format</source>
         <translation>Formato di visualizzazione del &amp;tempo</translation>
-    </message>
-    <message>
-        <source>Name Resolution</source>
-        <translation>Risoluzione dei nomi</translation>
     </message>
     <message>
         <source>Copy</source>
@@ -5899,10 +5926,6 @@ a:hover {
         <translation>RTSP</translation>
     </message>
     <message>
-        <source>RTP</source>
-        <translation>RTP</translation>
-    </message>
-    <message>
         <source>&amp;Edit</source>
         <translation>&amp;Modifica</translation>
     </message>
@@ -5915,16 +5938,8 @@ a:hover {
         <translation>Barra degli strumenti dei filtri di visualizzazione</translation>
     </message>
     <message>
-        <source>Open</source>
-        <translation>Apri</translation>
-    </message>
-    <message>
         <source>Open a capture file</source>
         <translation>Apri un file di cattura</translation>
-    </message>
-    <message>
-        <source>Quit</source>
-        <translation>Esci</translation>
     </message>
     <message>
         <source>Quit Wireshark</source>
@@ -5945,10 +5960,6 @@ a:hover {
     <message>
         <source>Stop capturing packets</source>
         <translation>Ferma la cattura dei pacchetti</translation>
-    </message>
-    <message>
-        <source>Close</source>
-        <translation>Chiudi</translation>
     </message>
     <message>
         <source>No files found</source>
@@ -6095,6 +6106,10 @@ a:hover {
         <translation>Esporta i pacchetti specificati</translation>
     </message>
     <message>
+        <source>Export TLS Session Keys…</source>
+        <translation>Esporta chiavi di sessione SSL...</translation>
+    </message>
+    <message>
         <source>List Files</source>
         <translation>Elenca file</translation>
     </message>
@@ -6137,6 +6152,26 @@ a:hover {
     <message>
         <source>Restart current capture</source>
         <translation>Riavvia la cattura attuale</translation>
+    </message>
+    <message>
+        <source>As &amp;CSV…</source>
+        <translation>Come &amp;CSV...</translation>
+    </message>
+    <message>
+        <source>As &quot;C&quot; &amp;Arrays…</source>
+        <translation>Come &amp;array &quot;C&quot;...</translation>
+    </message>
+    <message>
+        <source>As P&amp;SML XML…</source>
+        <translation>Come P&amp;SML XML...</translation>
+    </message>
+    <message>
+        <source>As P&amp;DML XML…</source>
+        <translation>Come P&amp;DML XML...</translation>
+    </message>
+    <message>
+        <source>As &amp;JSON…</source>
+        <translation>Come &amp;JSON...</translation>
     </message>
     <message>
         <source>Description</source>
@@ -6193,26 +6228,6 @@ a:hover {
     <message>
         <source>Conversation Filter</source>
         <translation>Filtro di conversazione</translation>
-    </message>
-    <message>
-        <source>Service Response Time</source>
-        <translation>Tempo di risposta del servizio</translation>
-    </message>
-    <message>
-        <source>ANSI</source>
-        <translation>ANSI</translation>
-    </message>
-    <message>
-        <source>GSM</source>
-        <translation>GSM</translation>
-    </message>
-    <message>
-        <source>LTE</source>
-        <translation>LTE</translation>
-    </message>
-    <message>
-        <source>MTP3</source>
-        <translation>MTP3</translation>
     </message>
     <message>
         <source>Osmux</source>
@@ -6300,10 +6315,6 @@ a:hover {
         <translation>Esporta &amp;byte del pacchetto...</translation>
     </message>
     <message>
-        <source>Export SSL Session Keys…</source>
-        <translation>Esporta chiavi della sessione SSL...</translation>
-    </message>
-    <message>
         <source>&amp;Print…</source>
         <translation>Stam&amp;pa...</translation>
     </message>
@@ -6314,10 +6325,6 @@ a:hover {
     <message>
         <source>Reload as File Format/Capture</source>
         <translation>Ricarica come file di formato/cattura</translation>
-    </message>
-    <message>
-        <source>As JSON…</source>
-        <translation>Come JSON...</translation>
     </message>
     <message>
         <source>Copy this item&apos;s description</source>
@@ -6372,10 +6379,6 @@ a:hover {
         <translation>Marca tutti i pacchetti visualizzati</translation>
     </message>
     <message>
-        <source>Unmark All Displayed</source>
-        <translation>Rimuovi la selezione da tutti i visualizzati</translation>
-    </message>
-    <message>
         <source>Unmark all displayed packets</source>
         <translation>Rimuovi la selezione da tutti i pacchetti visualizzati</translation>
     </message>
@@ -6414,10 +6417,6 @@ a:hover {
     <message>
         <source>Unignore All Displayed</source>
         <translation>Considera tutti i visualizzati</translation>
-    </message>
-    <message>
-        <source>Unignore all displayed packets</source>
-        <translation>Considera tutti i pacchetti visualizzati</translation>
     </message>
     <message>
         <source>Set/Unset Time Reference</source>
@@ -6466,6 +6465,10 @@ a:hover {
     <message>
         <source>Remove all packet comments in the capture file</source>
         <translation>Rimuovi tutti i commenti dei pacchetti nel file di cattura</translation>
+    </message>
+    <message>
+        <source>&amp;Configuration Profiles…</source>
+        <translation>Profili di &amp;configurazione...</translation>
     </message>
     <message>
         <source>Configuration profiles</source>
@@ -6534,6 +6537,10 @@ a:hover {
     <message>
         <source>TCP window scaling</source>
         <translation>Ridimensionamento della finestra TCP</translation>
+    </message>
+    <message>
+        <source>TLS Stream</source>
+        <translation>Flusso TLS</translation>
     </message>
     <message>
         <source>HTTP Stream</source>
@@ -6780,6 +6787,14 @@ a:hover {
         <translation>Filtra questa associazione</translation>
     </message>
     <message>
+        <source>&amp;Conversations</source>
+        <translation>&amp;Conversazioni</translation>
+    </message>
+    <message>
+        <source>&amp;Endpoints</source>
+        <translation>T&amp;erminatori</translation>
+    </message>
+    <message>
         <source>Shrink the main window text</source>
         <translation>Riduci il testo della finestra principale</translation>
     </message>
@@ -6796,24 +6811,12 @@ a:hover {
         <translation>Ripristina la disposizione dell&apos;aspetto alla dimensione predefinita</translation>
     </message>
     <message>
-        <source>Conversation Hash Tables</source>
-        <translation>Tabella hash di conversazione</translation>
-    </message>
-    <message>
         <source>Show each conversation hash table</source>
         <translation>Mostri ogni tabella degli hash di conversazione</translation>
     </message>
     <message>
-        <source>Dissector Tables</source>
-        <translation>Tabella dei decodificatori</translation>
-    </message>
-    <message>
         <source>Show each dissector table and its entries</source>
         <translation>Mostra ogni tabella dei decodificatori e le sue voci</translation>
-    </message>
-    <message>
-        <source>Supported Protocols</source>
-        <translation>Protocolli supportati</translation>
     </message>
     <message>
         <source>Show the currently supported protocols and display filter fields</source>
@@ -6834,10 +6837,6 @@ a:hover {
     <message>
         <source>LTE RLC statistics</source>
         <translation>Statistiche RLC LTE</translation>
-    </message>
-    <message>
-        <source>RLC Graph</source>
-        <translation>Grafico RLC</translation>
     </message>
     <message>
         <source>LTE RLC graph</source>
@@ -6884,6 +6883,10 @@ a:hover {
         <translation>Mostra byte del pacchetto...</translation>
     </message>
     <message>
+        <source>Go to &amp;Linked Packet</source>
+        <translation>Vai a&amp;l pacchetto collegato</translation>
+    </message>
+    <message>
         <source>UDP Multicast Streams</source>
         <translation>Flusso multicast UDP</translation>
     </message>
@@ -6898,10 +6901,6 @@ a:hover {
     <message>
         <source>Show IEEE 802.11 wireless LAN statistics.</source>
         <translation>Mostra le statistiche wireless LAN IEEE 802.11.</translation>
-    </message>
-    <message>
-        <source>Add a filter button</source>
-        <translation>Aggiungi un pulsante di filtro</translation>
     </message>
     <message>
         <source>Add a display filter button.</source>
@@ -6920,6 +6919,10 @@ a:hover {
         <translation>Schermo &amp;intero</translation>
     </message>
     <message>
+        <source>Credentials</source>
+        <translation>Credenziali</translation>
+    </message>
+    <message>
         <source>&amp;Options…</source>
         <translation>&amp;Opzioni...</translation>
     </message>
@@ -6934,22 +6937,6 @@ a:hover {
     <message>
         <source>As Plain &amp;Text…</source>
         <translation>Come &amp;testo semplice...</translation>
-    </message>
-    <message>
-        <source>As CSV…</source>
-        <translation>Come CSV...</translation>
-    </message>
-    <message>
-        <source>As &quot;C&quot; Arrays…</source>
-        <translation>Come array &quot;C&quot;...</translation>
-    </message>
-    <message>
-        <source>As PSML XML…</source>
-        <translation>Come PSML XML...</translation>
-    </message>
-    <message>
-        <source>As PDML XML…</source>
-        <translation>Come PDML XML...</translation>
     </message>
     <message>
         <source>All Visible Items</source>
@@ -6992,10 +6979,6 @@ a:hover {
         <translation>... o non selezionati</translation>
     </message>
     <message>
-        <source>Display Filters…</source>
-        <translation>Filtri di visualizzazione...</translation>
-    </message>
-    <message>
         <source>Display Filter &amp;Macros…</source>
         <translation>Visualizza &amp;macro dei filtri...</translation>
     </message>
@@ -7020,10 +7003,6 @@ a:hover {
         <translation>Commento del pacchetto...</translation>
     </message>
     <message>
-        <source>Configuration Profiles…</source>
-        <translation>Profili di configurazione...</translation>
-    </message>
-    <message>
         <source>&amp;Preferences…</source>
         <translation>&amp;Preferenze...</translation>
     </message>
@@ -7034,10 +7013,6 @@ a:hover {
     <message>
         <source>UDP Stream</source>
         <translation>Flusso UDP</translation>
-    </message>
-    <message>
-        <source>SSL Stream</source>
-        <translation>Flusso SSL</translation>
     </message>
     <message>
         <source>Request Sequences</source>
@@ -7080,16 +7055,8 @@ a:hover {
         <translation>Mostra o nascondi la barra degli strumenti del filtro di visualizzazione</translation>
     </message>
     <message>
-        <source>Conversations</source>
-        <translation>Conversazioni</translation>
-    </message>
-    <message>
         <source>Conversations at different protocol levels</source>
         <translation>Conversazioni a diversi livelli di protocollo</translation>
-    </message>
-    <message>
-        <source>Endpoints</source>
-        <translation>Terminatori</translation>
     </message>
     <message>
         <source>Endpoints at different protocol levels</source>
@@ -7304,12 +7271,28 @@ a:hover {
         <translation>Mostra o nascondi i byte del pacchetto</translation>
     </message>
     <message>
+        <source>&amp;Conversation Hash Tables</source>
+        <translation>Tabelle hash di &amp;conversazione</translation>
+    </message>
+    <message>
+        <source>&amp;Dissector Tables</source>
+        <translation>Tabella dei &amp;decodificatori</translation>
+    </message>
+    <message>
+        <source>&amp;Supported Protocols</source>
+        <translation>Protocolli &amp;supportati</translation>
+    </message>
+    <message>
         <source>MAP Summary</source>
         <translation>Riepilogo MAP</translation>
     </message>
     <message>
         <source>GSM MAP summary statistics</source>
         <translation>Statistiche riepilogo GSM MAP</translation>
+    </message>
+    <message>
+        <source>RLC &amp;Graph</source>
+        <translation>&amp;Grafico RLC</translation>
     </message>
     <message>
         <source>&amp;Coloring Rules…</source>
@@ -7333,6 +7316,10 @@ a:hover {
         <translation>Nuova regola di colorazione...</translation>
     </message>
     <message>
+        <source>IA&amp;X2 Stream Analysis</source>
+        <translation>Analisi flusso IA&amp;X2</translation>
+    </message>
+    <message>
         <source>Enabled Protocols…</source>
         <oldsource>Enable Protocols…</oldsource>
         <translation>Abilita protocolli...</translation>
@@ -7354,16 +7341,72 @@ a:hover {
         <translation>Apri la pagina di riferimento del filtro di visualizzazione per questo campo di filtro.</translation>
     </message>
     <message>
-        <source>Go to Linked Packet</source>
-        <translation>Vai al pacchetto collegato</translation>
-    </message>
-    <message>
         <source>Go to the packet referenced by the selected field.</source>
         <translation>Vai al pacchetto referenziato dal campo selezionato.</translation>
     </message>
     <message>
         <source>&amp;VoIP Calls</source>
         <translation>Chiamate &amp;VoIP</translation>
+    </message>
+    <message>
+        <source>Open &amp;Recent</source>
+        <translation>Apri &amp;recenti</translation>
+    </message>
+    <message>
+        <source>Name Resol&amp;ution</source>
+        <translation>Risol&amp;uzione dei nomi</translation>
+    </message>
+    <message>
+        <source>Service &amp;Response Time</source>
+        <translation>Tempo di &amp;risposta del servizio</translation>
+    </message>
+    <message>
+        <source>&amp;RTP</source>
+        <translation>&amp;RTP</translation>
+    </message>
+    <message>
+        <source>S&amp;CTP</source>
+        <translation>S&amp;CTP</translation>
+    </message>
+    <message>
+        <source>&amp;ANSI</source>
+        <translation>&amp;ANSI</translation>
+    </message>
+    <message>
+        <source>&amp;GSM</source>
+        <translation>&amp;GSM</translation>
+    </message>
+    <message>
+        <source>&amp;LTE</source>
+        <translation>&amp;LTE</translation>
+    </message>
+    <message>
+        <source>&amp;MTP3</source>
+        <translation>&amp;MTP3</translation>
+    </message>
+    <message>
+        <source>&amp;Open</source>
+        <translation>&amp;Apri</translation>
+    </message>
+    <message>
+        <source>&amp;Quit</source>
+        <translation>&amp;Esci</translation>
+    </message>
+    <message>
+        <source>&amp;Close</source>
+        <translation>Chiudi</translation>
+    </message>
+    <message>
+        <source>Display &amp;Filters…</source>
+        <translation>&amp;Filtri di visualizzazione...</translation>
+    </message>
+    <message>
+        <source>&amp;Unmark All Displayed</source>
+        <translation>Rim&amp;uovi la selezione da tutti i visualizzati</translation>
+    </message>
+    <message>
+        <source>U&amp;nignore all displayed packets</source>
+        <translation>Co&amp;nsidera tutti i pacchetti visualizzati</translation>
     </message>
     <message>
         <source>All VoIP Calls</source>
@@ -7568,10 +7611,6 @@ a:hover {
         <translation>Non puoi esportare pacchetti sul file di cattura attuale.</translation>
     </message>
     <message>
-        <source>.</source>
-        <translation>.</translation>
-    </message>
-    <message>
         <source>Do you want to save the changes you&apos;ve made%1?</source>
         <oldsource>Do you want to save the captured packets</oldsource>
         <translation>Vuoi salvare le modifiche che hai apportato%1?</translation>
@@ -7633,10 +7672,6 @@ a:hover {
         <translation>Ferma e continua senza sal&amp;vare</translation>
     </message>
     <message>
-        <source>(File name can&apos;t be mapped to UTF-8)</source>
-        <translation>(Il nome del file non può essere associato in UTF-8)</translation>
-    </message>
-    <message>
         <source>The Wireshark Network Analyzer</source>
         <translation>Wireshark l&apos;analizzatore di rete</translation>
     </message>
@@ -7684,14 +7719,10 @@ a:hover {
         <source>No Keys</source>
         <translation>Nessuna chiave</translation>
     </message>
-    <message>
-        <source>There are no SSL Session Keys to save.</source>
-        <translation>Non ci sono chiavi di sessione SSL da salvare.</translation>
-    </message>
     <message numerus="yes">
         <source>Export SSL Session Keys (%Ln key(s))</source>
         <oldsource>Export SSL Session Keys (%1 key%2</oldsource>
-        <translation>
+        <translation type="vanished">
             <numerusform>Esporta chiavi della sessione SSL (%Ln chiave)</numerusform>
             <numerusform>Esporta chiavi della sessione SSL (%Ln chiavi)</numerusform>
         </translation>
@@ -7703,10 +7734,6 @@ a:hover {
     <message>
         <source>Merging files</source>
         <translation>Unisci i file</translation>
-    </message>
-    <message>
-        <source>SSL Session Keys (*.keys *.txt);;All Files (</source>
-        <translation>Chiavi di sessione SSL (*.keys *.txt);;Tutti i file (</translation>
     </message>
     <message>
         <source>Couldn&apos;t copy text. Try another item.</source>
@@ -7745,6 +7772,21 @@ a:hover {
         <translation> prima di iniziare una nuova cattura</translation>
     </message>
     <message>
+        <source>There are no TLS Session Keys to save.</source>
+        <translation>Non ci sono chiavi di sessione SSL da salvare.</translation>
+    </message>
+    <message numerus="yes">
+        <source>Export TLS Session Keys (%Ln key(s))</source>
+        <translation>
+            <numerusform>Esporta chiavi dj sessione SSL (%Ln chiave)</numerusform>
+            <numerusform>Esporta chiavi di sessione SSL (%Ln chiavi)</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>TLS Session Keys (*.keys *.txt);;All Files (</source>
+        <translation>Chiavi di sessione SSL (*.keys *.txt);;Tutti i file (</translation>
+    </message>
+    <message>
         <source> before restarting the capture</source>
         <translation> prima di riavviare la cattura</translation>
     </message>
@@ -7755,22 +7797,6 @@ a:hover {
     <message>
         <source>&lt;p&gt;The Wireshark Wiki is maintained by the community.&lt;/p&gt;&lt;p&gt;The page you are about to load might be wonderful, incomplete, wrong, or nonexistent.&lt;/p&gt;&lt;p&gt;Proceed to the wiki?&lt;/p&gt;</source>
         <translation>&lt;p&gt;Il Wiki di Wireshark è gestito dalla comunità.&lt;/p&gt;&lt;p&gt;La pagina che stai per caricare potrebbe essere perfetta, incompleta, errata o inesistente.&lt;/p&gt;&lt;p&gt;Vuoi proseguire?&lt;/p&gt;</translation>
-    </message>
-    <message>
-        <source>Filter Button Preferences...</source>
-        <translation>Preferenze pulsante di filtro...</translation>
-    </message>
-    <message>
-        <source>Edit</source>
-        <translation>Modifica</translation>
-    </message>
-    <message>
-        <source>Disable</source>
-        <translation>Disabilita</translation>
-    </message>
-    <message>
-        <source>Remove</source>
-        <translation>Rimuovi</translation>
     </message>
     <message>
         <source>Loading</source>
@@ -7831,6 +7857,10 @@ a:hover {
     <message>
         <source>Confirm unsaved capture files</source>
         <translation>Conferma file di cattura non salvati</translation>
+    </message>
+    <message>
+        <source>Display autocompletion for filter text</source>
+        <translation>Visualizza il completamento automatico per il testo del filtro</translation>
     </message>
     <message>
         <source>Main toolbar style:</source>
@@ -7964,10 +7994,6 @@ a:hover {
     <message>
         <source>Length</source>
         <translation>Lunghezza</translation>
-    </message>
-    <message>
-        <source> (gzip compressed)</source>
-        <translation> (compresso con gzip)</translation>
     </message>
     <message>
         <source>Format</source>
@@ -8200,6 +8226,10 @@ a:hover {
         <translation>Linea di sommario</translation>
     </message>
     <message>
+        <source>Include column headings</source>
+        <translation>Includi le intestazioni di colonna</translation>
+    </message>
+    <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Packet details similar to the protocol tree&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Dettagli del pacchetto simile all&apos;albero dei protocolli&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
@@ -8247,6 +8277,21 @@ a:hover {
         <translation>Riepilogo come testo</translation>
     </message>
     <message>
+        <source>Frame %1: %2
+
+</source>
+        <translation>Frame %1: %2
+
+</translation>
+    </message>
+    <message>
+        <source>[ Comment text exceeds %1. Stopping. ]</source>
+        <translation>[ Il testo del commento supera %1. Interruzione. ]</translation>
+    </message>
+</context>
+<context>
+    <name>PacketListHeader</name>
+    <message>
         <source>Align Left</source>
         <translation>Allinea a sinistra</translation>
     </message>
@@ -8267,28 +8312,28 @@ a:hover {
         <translation>Modifica colonna</translation>
     </message>
     <message>
-        <source>Resize To Contents</source>
-        <translation>Ridimensiona come il contenuto</translation>
+        <source>Resize to Contents</source>
+        <translation>Ridimensiona al contenuto</translation>
+    </message>
+    <message>
+        <source>Resize Column to Width</source>
+        <translation>Ridimensiona colonna alla larghezza</translation>
     </message>
     <message>
         <source>Resolve Names</source>
-        <translation>Risolvi i nomi</translation>
+        <translation>Risolvi nomi</translation>
     </message>
     <message>
-        <source>Remove This Column</source>
+        <source>Remove this Column</source>
         <translation>Rimuovi questa colonna</translation>
     </message>
     <message>
-        <source>Frame %1: %2
-
-</source>
-        <translation>Frame %1: %2
-
-</translation>
+        <source>Column %1</source>
+        <translation>Colonna %1</translation>
     </message>
     <message>
-        <source>[ Comment text exceeds %1. Stopping. ]</source>
-        <translation>[ Il testo del commento supera %1. Interruzione. ]</translation>
+        <source>Width:</source>
+        <translation>Larghezza:</translation>
     </message>
 </context>
 <context>
@@ -8362,10 +8407,6 @@ a:hover {
 </context>
 <context>
     <name>PluginListModel</name>
-    <message>
-        <source>extcap</source>
-        <translation>extcap</translation>
-    </message>
     <message>
         <source>Name</source>
         <translation>Nome</translation>
@@ -8452,6 +8493,10 @@ a:hover {
         <source>Filter Buttons</source>
         <translation>Pulsanti di filtro</translation>
     </message>
+    <message>
+        <source>RSA Keys</source>
+        <translation>Chiavi RSA</translation>
+    </message>
 </context>
 <context>
     <name>PrintDialog</name>
@@ -8503,8 +8548,8 @@ a:hover {
 <context>
     <name>ProfileDialog</name>
     <message>
-        <source>Name</source>
-        <translation>Nome</translation>
+        <source>Search for profile ...</source>
+        <translation>Cerca profilo...</translation>
     </message>
     <message>
         <source>Create a new profile using default settings.</source>
@@ -8520,36 +8565,203 @@ a:hover {
         <translation>Copia questo profilo.</translation>
     </message>
     <message>
+        <source>Import</source>
+        <translation type="vanished">Importa</translation>
+    </message>
+    <message>
         <source>Configuration Profiles</source>
         <translation>Profili di configurazione</translation>
     </message>
     <message>
-        <source>Will be reset to default values</source>
-        <translation>Sarà ripristinato ai valori predefiniti</translation>
+        <source>Import</source>
+        <comment>noun</comment>
+        <translation type="unfinished">Importa</translation>
     </message>
     <message>
-        <source>Created from %1</source>
-        <translation>Creato da %1</translation>
+        <source>Export</source>
+        <comment>noun</comment>
+        <translation type="unfinished">Esporta</translation>
     </message>
     <message>
-        <source>(system provided)</source>
-        <translation>(fornito dal sistema)</translation>
+        <source>All Profiles</source>
+        <translation>Tutti i profili</translation>
+    </message>
+    <message>
+        <source>User-defined profiles</source>
+        <translation>Profili definiti dall&apos;utente</translation>
+    </message>
+    <message>
+        <source>System profiles</source>
+        <translation>Profili di sistema</translation>
+    </message>
+    <message>
+        <source>An import of profiles is not allowed, while changes are pending.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>New profile</source>
+        <translation>Nuon profilo</translation>
+    </message>
+    <message>
+        <source>Profile Error</source>
+        <translation>Errore di profilo</translation>
+    </message>
+    <message>
+        <source>Exporting profiles</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No profiles found for export</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select zip file for export</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <source>%Ln profile(s) have been exported</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>An error has occured while exporting profiles</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select zip file for import</source>
+        <translation>Seleziona file zip per l&apos;importazione</translation>
+    </message>
+    <message numerus="yes">
+        <source>%Ln profile(s) imported</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>, %Ln profile(s) skipped</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Select directory for import</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Zip File (*.zip)</source>
+        <translation>File Zip (*.zip)</translation>
+    </message>
+    <message>
+        <source>No profiles found for import in %1</source>
+        <translation>Nessun profilo trovato per l&apos;importazione in %1</translation>
+    </message>
+    <message>
+        <source>, %1 profile(s) skipped</source>
+        <translation type="vanished">, %1 profili saltati</translation>
+    </message>
+    <message>
+        <source>Importing profiles</source>
+        <translation>Importazione profili</translation>
+    </message>
+    <message>
+        <source>One profile has been imported</source>
+        <translation type="vanished">Un profilo è stato importato</translation>
+    </message>
+    <message>
+        <source>%1 profiles have been imported</source>
+        <translation type="vanished">%1 profili sono stati importati</translation>
+    </message>
+</context>
+<context>
+    <name>ProfileModel</name>
+    <message>
+        <source>User</source>
+        <translation>Utente</translation>
+    </message>
+    <message>
+        <source>Resetting to default</source>
+        <translation>Ripristino dei valori predefiniti</translation>
     </message>
     <message>
         <source>Created from default settings</source>
         <translation>Creato dalle impostazioni predefinite</translation>
     </message>
     <message>
-        <source>Renamed from %1</source>
-        <translation>Rinominato da %1</translation>
+        <source>Copied from: </source>
+        <translation>Copiato da:</translation>
     </message>
     <message>
-        <source>Go to %1</source>
-        <translation>Vai a %1</translation>
+        <source>system provided</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>deleted</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>copy</source>
+        <comment>noun</comment>
+        <translation type="unfinished">copia</translation>
+    </message>
+    <message>
+        <source>Exporting profiles while changes are pending is not allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No profiles found to export</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>A profile name cannot contain the following characters: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>A profile name cannot contain the &apos;/&apos; character.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>A profile cannot start or end with a period (.)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Will be reset to default values</source>
+        <translation type="vanished">Sarà ripristinato ai valori predefiniti</translation>
+    </message>
+    <message>
+        <source>Created from %1</source>
+        <translation type="vanished">Creato da %1</translation>
+    </message>
+    <message>
+        <source>(system provided)</source>
+        <translation type="vanished">(fornito dal sistema)</translation>
+    </message>
+    <message>
+        <source>(deleted)</source>
+        <translation type="vanished">(eliminato)</translation>
+    </message>
+    <message>
+        <source>Default</source>
+        <translation>Predefinito</translation>
+    </message>
+    <message>
+        <source>System</source>
+        <translation>Sistema </translation>
+    </message>
+    <message>
+        <source>Renamed from: </source>
+        <translation>Rinominato da:</translation>
     </message>
     <message>
         <source>This is a system provided profile.</source>
         <translation>Questo è un profilo fornito dal sistema.</translation>
+    </message>
+    <message>
+        <source>The profile will be reset to default values.</source>
+        <translation type="vanished">Il profilo sarà ripristinato ai valori predefiniti.</translation>
     </message>
     <message>
         <source>A profile already exists with this name.</source>
@@ -8557,15 +8769,31 @@ a:hover {
     </message>
     <message>
         <source>A profile already exists with this name</source>
-        <translation>Un profilo con questo nome esiste già</translation>
+        <translation type="vanished">Un profilo con questo nome esiste già</translation>
     </message>
     <message>
-        <source>The profile will be reset to default values.</source>
-        <translation>Il profilo sarà ripristinato ai valori predefiniti.</translation>
+        <source>Profile</source>
+        <translation>Profilo</translation>
     </message>
     <message>
-        <source>Profile Error</source>
-        <translation>Errore di profilo</translation>
+        <source>Type</source>
+        <translation>Tipo</translation>
+    </message>
+    <message>
+        <source>Path</source>
+        <translation type="vanished">Percorso</translation>
+    </message>
+    <message>
+        <source>copy</source>
+        <translation type="vanished">copia</translation>
+    </message>
+    <message>
+        <source>A profile must not contain any of the following characters: %1</source>
+        <translation type="vanished">Un profilo non deve contenere uno dei seguenti caratteri: %1</translation>
+    </message>
+    <message>
+        <source>A profile must not start or end with a period (.)</source>
+        <translation type="vanished">Un profilo non deve iniziare o finire con un punto (.)</translation>
     </message>
 </context>
 <context>
@@ -9432,6 +9660,97 @@ a:hover {
     <message>
         <source>ONC-RPC Service Response Times</source>
         <translation>Tempi di risposta del servizio ONC-RPC</translation>
+    </message>
+</context>
+<context>
+    <name>RsaKeysFrame</name>
+    <message>
+        <source>RSA Keys</source>
+        <translation>Chiavi RSA</translation>
+    </message>
+    <message>
+        <source>RSA private keys are loaded from a file or PKCS #11 token.</source>
+        <translation>Le chiavi private RSA sono caricate da un file o da un token PKCS #11.</translation>
+    </message>
+    <message>
+        <source>Add new keyfile…</source>
+        <translation>Aggiungi nuova chiave...</translation>
+    </message>
+    <message>
+        <source>Add new token…</source>
+        <translation>Aggiungi nuovo token...</translation>
+    </message>
+    <message>
+        <source>Remove key</source>
+        <translation>Rimuovi chiave</translation>
+    </message>
+    <message>
+        <source>PKCS #11 provider libraries.</source>
+        <translation>Librerie del fornitore PKCS #11.</translation>
+    </message>
+    <message>
+        <source>Add new provider…</source>
+        <translation>Aggiungi nuovo fornitore...</translation>
+    </message>
+    <message>
+        <source>Remove provider</source>
+        <translation>Rimuovi fornitore</translation>
+    </message>
+    <message>
+        <source>Add PKCS #11 token or key</source>
+        <translation>Aggiungi token o chiave PKCS #11</translation>
+    </message>
+    <message>
+        <source>No new PKCS #11 tokens or keys found, consider adding a PKCS #11 provider.</source>
+        <translation>Nessun nuovo token o chiave PKCS #11 trovato, considera di aggiungere un fornitore PKCS #11.</translation>
+    </message>
+    <message>
+        <source>Select a new PKCS #11 token or key</source>
+        <translation>Seleziona un nuovo token o chiave PKCS #11</translation>
+    </message>
+    <message>
+        <source>PKCS #11 token or key</source>
+        <translation>Token o chiave PKCS #11</translation>
+    </message>
+    <message>
+        <source>Enter PIN or password for %1 (it will be stored unencrypted)</source>
+        <translation>Digita il PIN o la password per %1 (sarà memorizzata senza cifratura)</translation>
+    </message>
+    <message>
+        <source>Enter PIN or password for key</source>
+        <translation>Digita il PIN o la password per la chiave</translation>
+    </message>
+    <message>
+        <source>Key could not be added: %1</source>
+        <translation>La chiave non può essere aggiunta: %1</translation>
+    </message>
+    <message>
+        <source>RSA private key (*.pem *.p12 *.pfx *.key);;All Files (</source>
+        <translation>Chiave privata RSA (*.pem *.p12 *.pfx *.key);;Tutti i file (</translation>
+    </message>
+    <message>
+        <source>Select RSA private key file</source>
+        <translation>Seleziona file della chiave privata RSA</translation>
+    </message>
+    <message>
+        <source>Libraries (*.dll)</source>
+        <translation>Librerie (*.dll)</translation>
+    </message>
+    <message>
+        <source>Libraries (*.so)</source>
+        <translation>Librerie (*.so)</translation>
+    </message>
+    <message>
+        <source>Select PKCS #11 Provider Library</source>
+        <translation>Seleziona libreria del fornitore PKCS #11</translation>
+    </message>
+    <message>
+        <source>Changes will apply after a restart</source>
+        <translation>Le modifiche saranno applicate dopo il riavvio</translation>
+    </message>
+    <message>
+        <source>PKCS #11 provider %1 will be removed after the next restart.</source>
+        <translation>Il fornitore PKCS #11 %1 sarà rimosso dopo il prossimo riavvio.</translation>
     </message>
 </context>
 <context>
@@ -10698,6 +11017,14 @@ a:hover {
         <translation>Nessuna associazione trovata per questo pacchetto.</translation>
     </message>
     <message>
+        <source>Warning</source>
+        <translation>Avviso</translation>
+    </message>
+    <message>
+        <source>Could not find SCTP Association with id: %1</source>
+        <translation>Impossibile trovare l&apos;associazione SCTP con id: %1 </translation>
+    </message>
+    <message>
         <source>Complete list of IP-Addresses as provided in the INIT-Chunk</source>
         <translation>Elenco completo degli indirizzi IP come fornito nel blocco INIT</translation>
     </message>
@@ -10878,6 +11205,10 @@ a:hover {
         <translation>Grafico SCTP</translation>
     </message>
     <message>
+        <source>Relative TSNs</source>
+        <translation>TSN relativi</translation>
+    </message>
+    <message>
         <source>Only SACKs</source>
         <translation>Solo SACK</translation>
     </message>
@@ -10892,10 +11223,6 @@ a:hover {
     <message>
         <source>Reset to full size</source>
         <translation>Ripristina la dimensione massima</translation>
-    </message>
-    <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>Save Graph</source>
@@ -11699,8 +12026,8 @@ a:hover {
 <context>
     <name>SyntaxLineEdit</name>
     <message>
-        <source>&quot;%1&quot; may have unexpected results (see the User&apos;s Guide)</source>
-        <translation>&quot;%1&quot; potrebbe avere dei risultati inattesi (vedi il Manuale utente)</translation>
+        <source>&quot;%1&quot; is deprecated or may have unexpected results. See the User&apos;s Guide.</source>
+        <translation>&quot;%1&quot; è sconsigliato e potrebbe avere dei comportamenti inattesi. Vedi il Manuale utente.</translation>
     </message>
 </context>
 <context>
@@ -12493,6 +12820,14 @@ a:hover {
         <translation>Tabella accessibile dall&apos;utente sconosciuta</translation>
     </message>
     <message>
+        <source>Copy from</source>
+        <translation>Copia da</translation>
+    </message>
+    <message>
+        <source>Copy entries from another profile.</source>
+        <translation>Copia voci da un altro profilo.</translation>
+    </message>
+    <message>
         <source>Open </source>
         <translation>Apri </translation>
     </message>
@@ -12526,6 +12861,14 @@ a:hover {
     <message>
         <source>Clear all entries.</source>
         <translation>Cancella tutte le voci.</translation>
+    </message>
+    <message>
+        <source>Copy entries from another profile.</source>
+        <translation>Copia voci da un altro profilo.</translation>
+    </message>
+    <message>
+        <source>Copy from</source>
+        <translation>Copia da</translation>
     </message>
     <message>
         <source>Unknown User Accessible Table</source>
@@ -12662,61 +13005,61 @@ a:hover {
     <name>WelcomePage</name>
     <message>
         <source>Form</source>
-        <translation type="unfinished">Modulo</translation>
+        <translation>Modulo</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:large;&quot;&gt;Welcome to Wireshark&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:large;&quot;&gt;Benvenuto in Wireshark&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:large;&quot;&gt;Benvenuto in Wireshark&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Open a file on your file system&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Apri un file sul tuo file system&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Apri un file sul tuo file system&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>&lt;h2&gt;Open&lt;/h2&gt;</source>
-        <translation type="unfinished">&lt;h2&gt;Apri&lt;/h2&gt;</translation>
+        <translation>&lt;h2&gt;Apri&lt;/h2&gt;</translation>
     </message>
     <message>
         <source>Recent capture files</source>
-        <translation type="unfinished">File di cattura recenti</translation>
+        <translation>File di cattura recenti</translation>
     </message>
     <message>
         <source>Capture files that have been opened previously</source>
-        <translation type="unfinished">I file di cattura che sono stati aperti precedentemente</translation>
+        <translation>I file di cattura che sono stati aperti precedentemente</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Capture live packets from your network.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Cattura i pacchetti live dalla tua rete.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Cattura i pacchetti live dalla tua rete.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>&lt;h2&gt;Capture&lt;/h2&gt;</source>
-        <translation type="unfinished">&lt;h2&gt;Cattura&lt;/h2&gt;</translation>
+        <translation>&lt;h2&gt;Cattura&lt;/h2&gt;</translation>
     </message>
     <message>
         <source>…using this filter:</source>
-        <translation type="unfinished">...usando questo filtro:</translation>
+        <translation>...usando questo filtro:</translation>
     </message>
     <message>
         <source>Interface list</source>
-        <translation type="unfinished">Elenco delle interfacce</translation>
+        <translation>Elenco delle interfacce</translation>
     </message>
     <message>
         <source>List of available capture interfaces</source>
-        <translation type="unfinished">Elenco delle interfacce di cattura disponibili</translation>
+        <translation>Elenco delle interfacce di cattura disponibili</translation>
     </message>
     <message>
         <source>&lt;h2&gt;Learn&lt;/h2&gt;</source>
-        <translation type="unfinished">&lt;h2&gt;Impara&lt;/h2&gt;</translation>
+        <translation>&lt;h2&gt;Impara&lt;/h2&gt;</translation>
     </message>
     <message>
         <source>&lt;html&gt;&lt;head&gt;
 &lt;style&gt;
 a:link {
-  color: inherit;
+  color: palette(text);
   text-decoration: none;
 }
 a:hover {
-  color: inherit;
+  color: palette(text);
   text-decoration: underline;
 }
 &lt;/style&gt;
@@ -12740,14 +13083,14 @@ a:hover {
 
 &lt;/tr&gt;&lt;/table&gt;
 &lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished">&lt;html&gt;&lt;head&gt;
+        <translation>&lt;html&gt;&lt;head&gt;
 &lt;style&gt;
 a:link {
-  color: inherit;
+  color: palette(text);
   text-decoration: none;
 }
 a:hover {
-  color: inherit;
+  color: palette(text);
   text-decoration: underline;
 }
 &lt;/style&gt;
@@ -12767,61 +13110,57 @@ a:hover {
 
 &lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
 
-&lt;th&gt;&lt;a href=&quot;https://www.wireshark.org/lists/&quot;&gt;Mailing list&lt;/a&gt;&lt;/th&gt;
+&lt;th&gt;&lt;a href=&quot;https://www.wireshark.org/lists/&quot;&gt;Mailing List&lt;/a&gt;&lt;/th&gt;
 
 &lt;/tr&gt;&lt;/table&gt;
 &lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <source>Show in Finder</source>
-        <translation type="unfinished">Mostra in Finder</translation>
+        <translation>Mostra in Finder</translation>
     </message>
     <message>
         <source>Show in Folder</source>
-        <translation type="unfinished">Mostra nella cartella</translation>
+        <translation>Mostra nella cartella</translation>
     </message>
     <message>
         <source>All interfaces shown</source>
-        <translation type="unfinished">Tutte le interfacce mostrate</translation>
+        <translation>Tutte le interfacce mostrate</translation>
     </message>
     <message numerus="yes">
         <source>%n interface(s) shown, %1 hidden</source>
-        <translation type="unfinished">
-            <numerusform>%n interfaccia mostrata, %1 nascosta</numerusform>
+        <translation>
+            <numerusform>%n interfaccia mostrata, %1 nascoste</numerusform>
             <numerusform>%n interfacce mostrate, %1 nascoste</numerusform>
         </translation>
     </message>
     <message>
         <source>You are sniffing the glue that holds the Internet together using Wireshark </source>
-        <translation type="unfinished">Stai annusando la colla che tiene insieme Internet con Wireshark</translation>
+        <translation>Stai annusando la colla che tiene insieme Internet con Wireshark</translation>
     </message>
     <message>
         <source>You are running Wireshark </source>
-        <translation type="unfinished">Stai eseguendo Wireshark </translation>
-    </message>
-    <message>
-        <source>.</source>
-        <translation type="unfinished">.</translation>
+        <translation>Stai eseguendo Wireshark </translation>
     </message>
     <message>
         <source> You receive automatic updates.</source>
-        <translation type="unfinished"> Ricevi aggiornamenti automatici.</translation>
+        <translation> Ricevi aggiornamenti automatici.</translation>
     </message>
     <message>
         <source> You have disabled automatic updates.</source>
-        <translation type="unfinished">Hai disabilitato gli aggiornamenti automatici.</translation>
+        <translation>Hai disabilitato gli aggiornamenti automatici.</translation>
     </message>
     <message>
         <source>not found</source>
-        <translation type="unfinished">non trovato</translation>
+        <translation>non trovato</translation>
     </message>
     <message>
         <source>Copy file path</source>
-        <translation type="unfinished">Copia percorso del file</translation>
+        <translation>Copia percorso del file</translation>
     </message>
     <message>
-        <source>Remove</source>
-        <translation type="unfinished">Rimuovi</translation>
+        <source>Remove from list</source>
+        <translation>Rimuovi dall&apos;elenco</translation>
     </message>
 </context>
 <context>

@@ -92,7 +92,7 @@ typedef struct _PKT_INFO
     guint16 dstport;  /* tcp.dstport or udp.dstport*/
     guint16 len;  /* tcp.len or udp.len */
 
-    guint8  ssl_content_type;  /*ssl.record.content_type */
+    guint8  ssl_content_type;  /*tls.record.content_type */
 
     guint8  tds_type;  /*tds.type */
     guint16 tds_length;  /* tds.length */
@@ -176,7 +176,7 @@ extern gboolean is_dcerpc_req_pkt_type(guint32 pkt_type);
 
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 4

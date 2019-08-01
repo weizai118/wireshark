@@ -17,6 +17,7 @@
 #include <epan/srt_table.h>
 #include <epan/timestamp.h>
 #include <epan/stat_tap_ui.h>
+#include <ui/cmdarg_err.h>
 #include <ui/cli/tshark-tap.h>
 
 #define NANOSECS_PER_SEC 1000000000
@@ -114,11 +115,11 @@ init_srt_tables(register_srt_t* srt, const char *filter)
 	ui->data.srt_array = global_srt_array;
 	ui->data.user_data = ui;
 
-	error_string = register_tap_listener(get_srt_tap_listener_name(srt), &ui->data, filter, 0, NULL, get_srt_packet_func(srt), srt_draw);
+	error_string = register_tap_listener(get_srt_tap_listener_name(srt), &ui->data, filter, 0, NULL, get_srt_packet_func(srt), srt_draw, NULL);
 	if (error_string) {
 		free_srt_table(srt, global_srt_array);
 		g_free(ui);
-		fprintf(stderr, "tshark: Couldn't register srt tap: %s\n", error_string->str);
+		cmdarg_err("Couldn't register srt tap: %s", error_string->str);
 		g_string_free(error_string, TRUE);
 		exit(1);
 	}
@@ -135,7 +136,7 @@ dissector_srt_init(const char *opt_arg, void* userdata)
 	if (err != NULL)
 	{
 		gchar* cmd_str = srt_table_get_tap_string(srt);
-		fprintf(stderr, "tshark: invalid \"-z %s,%s\" argument\n", cmd_str, err);
+		cmdarg_err("invalid \"-z %s,%s\" argument", cmd_str, err);
 		g_free(cmd_str);
 		g_free(err);
 		exit(1);
@@ -175,7 +176,7 @@ register_srt_tables(const void *key _U_, void *value, void *userdata _U_)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

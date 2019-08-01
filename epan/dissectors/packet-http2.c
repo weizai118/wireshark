@@ -30,6 +30,7 @@
 #include <epan/expert.h>
 #include <epan/prefs.h>
 #include <epan/proto_data.h>
+#include <epan/exceptions.h>
 #include <epan/dissectors/packet-http.h> /* for getting status reason-phrase */
 #include <epan/dissectors/packet-http2.h>
 
@@ -64,9 +65,9 @@ VALUE_STRING_ENUM(http2_header_repr_type);
 VALUE_STRING_ARRAY(http2_header_repr_type);
 
 /*
- * Decompression of zlib encoded entities.
+ * Decompression of zlib or brotli encoded entities.
  */
-#ifdef HAVE_ZLIB
+#if defined(HAVE_ZLIB) || defined(HAVE_BROTLI)
 static gboolean http2_decompress_body = TRUE;
 #else
 static gboolean http2_decompress_body = FALSE;
@@ -274,6 +275,7 @@ static int hf_http2_header_name_length = -1;
 static int hf_http2_header_name = -1;
 static int hf_http2_header_value_length = -1;
 static int hf_http2_header_value = -1;
+static int hf_http2_header_unescaped = -1;
 static int hf_http2_header_repr = -1;
 static int hf_http2_header_index = -1;
 static int hf_http2_header_table_size_update = -1;
@@ -1105,6 +1107,33 @@ get_http2_session(packet_info *pinfo)
 }
 
 #ifdef HAVE_NGHTTP2
+guint32
+http2_get_stream_id(packet_info *pinfo)
+{
+    conversation_t *conversation;
+    http2_session_t *h2session;
+
+    conversation = find_conversation_pinfo(pinfo, 0);
+    if (!conversation) {
+        return 0;
+    }
+
+    h2session = (http2_session_t*)conversation_get_proto_data(conversation, proto_http2);
+    if (!h2session) {
+        return 0;
+    }
+
+    return h2session->current_stream_id;
+}
+#else /* ! HAVE_NGHTTP2 */
+guint32
+http2_get_stream_id(packet_info *pinfo _U_)
+{
+    return 0;
+}
+#endif /* ! HAVE_NGHTTP2 */
+
+#ifdef HAVE_NGHTTP2
 static guint32
 select_http2_flow_index(packet_info *pinfo, http2_session_t *h2session)
 {
@@ -1550,7 +1579,7 @@ try_add_named_header_field(proto_tree *tree, tvbuff_t *tvb, int offset, guint32 
 
 static void
 inflate_http2_header_block(tvbuff_t *tvb, packet_info *pinfo, guint offset,
-                           proto_tree *tree, size_t headlen,
+                           proto_tree *tree, guint headlen,
                            http2_session_t *h2session, guint8 flags)
 {
     guint8 *headbuf;
@@ -1575,6 +1604,7 @@ inflate_http2_header_block(tvbuff_t *tvb, packet_info *pinfo, guint offset,
     const gchar *method_header_value = NULL;
     const gchar *path_header_value = NULL;
     http2_header_stream_info_t* header_stream_info;
+    gchar *header_unescaped = NULL;
 
     if (!http2_hdrcache_map) {
         http2_hdrcache_map = wmem_map_new(wmem_file_scope(), http2_hdrcache_hash, http2_hdrcache_equal);
@@ -1592,6 +1622,8 @@ inflate_http2_header_block(tvbuff_t *tvb, packet_info *pinfo, guint offset,
            This makes context out-of-sync. */
         int decompressed_bytes = 0;
 
+        /* Make sure the length isn't too large. */
+        tvb_ensure_bytes_exist(tvb, offset, headlen);
         headbuf = (guint8*)wmem_alloc(wmem_packet_scope(), headlen);
         tvb_memcpy(tvb, headbuf, offset, headlen);
 
@@ -1699,7 +1731,7 @@ inflate_http2_header_block(tvbuff_t *tvb, packet_info *pinfo, guint offset,
             wmem_list_append(header_stream_info->stream_header_list, headers);
         }
 
-    } else {
+    } else if (header_data->current) {
         headers = (wmem_array_t*)wmem_list_frame_data(header_data->current);
 
         header_data->current = wmem_list_frame_next(header_data->current);
@@ -1707,6 +1739,8 @@ inflate_http2_header_block(tvbuff_t *tvb, packet_info *pinfo, guint offset,
         if(!header_data->current) {
             header_data->current = wmem_list_head(header_list);
         }
+    } else {
+        return;
     }
 
     if(wmem_array_get_count(headers) == 0) {
@@ -1734,7 +1768,7 @@ inflate_http2_header_block(tvbuff_t *tvb, packet_info *pinfo, guint offset,
     add_new_data_source(pinfo, header_tvb, "Decompressed Header");
 
     ti = proto_tree_add_uint(tree, hf_http2_header_length, header_tvb, hoffset, 1, header_len);
-    PROTO_ITEM_SET_GENERATED(ti);
+    proto_item_set_generated(ti);
 
     if (header_data->header_size_attempted > 0) {
         expert_add_info_format(pinfo, ti, &ei_http2_header_size,
@@ -1744,7 +1778,7 @@ inflate_http2_header_block(tvbuff_t *tvb, packet_info *pinfo, guint offset,
     }
 
     ti = proto_tree_add_uint(tree, hf_http2_header_count, header_tvb, hoffset, 1, wmem_array_get_count(headers));
-    PROTO_ITEM_SET_GENERATED(ti);
+    proto_item_set_generated(ti);
 
     if (header_data->header_lines_exceeded) {
         expert_add_info(pinfo, ti, &ei_http2_header_lines);
@@ -1787,6 +1821,14 @@ inflate_http2_header_block(tvbuff_t *tvb, packet_info *pinfo, guint offset,
         proto_tree_add_item_ret_string(header_tree, hf_http2_header_value, header_tvb, hoffset, header_value_length, ENC_ASCII|ENC_NA, wmem_packet_scope(), &header_value);
         // check if field is http2 header https://tools.ietf.org/html/rfc7541#appendix-A
         try_add_named_header_field(header_tree, header_tvb, hoffset, header_value_length, header_name, header_value);
+
+        /* Add header unescaped. */
+        header_unescaped = g_uri_unescape_string(header_value, NULL);
+        if (header_unescaped != NULL) {
+            ti = proto_tree_add_string(header_tree, hf_http2_header_unescaped, header_tvb, hoffset, header_value_length, header_unescaped);
+            proto_item_set_generated(ti);
+            g_free(header_unescaped);
+        }
         hoffset += header_value_length;
 
         /* Only track HEADER and CONTINUATION frames part there of. Don't look at PUSH_PROMISE and trailing CONTINUATION.
@@ -1913,7 +1955,7 @@ dissect_frame_padding(tvbuff_t *tvb, guint16 *padding, proto_tree *http2_tree,
         pad_len ++;
     }
     ti = proto_tree_add_uint(http2_tree, hf_http2_pad_length, tvb, offset-pad_len, pad_len, *padding);
-    PROTO_ITEM_SET_GENERATED(ti);
+    proto_item_set_generated(ti);
 
     return offset;
 }
@@ -1935,7 +1977,7 @@ dissect_frame_prio(tvbuff_t *tvb, proto_tree *http2_tree, guint offset, guint8 f
         weight = tvb_get_guint8(tvb, offset);
         /* 6.2: Weight:  An 8-bit weight for the stream; Add one to the value to obtain a weight between 1 and 256 */
         ti = proto_tree_add_uint(http2_tree, hf_http2_weight_real, tvb, offset, 1, weight+1);
-        PROTO_ITEM_SET_GENERATED(ti);
+        proto_item_set_generated(ti);
         offset++;
     }
 
@@ -1943,18 +1985,36 @@ dissect_frame_prio(tvbuff_t *tvb, proto_tree *http2_tree, guint offset, guint8 f
 }
 
 #ifdef HAVE_NGHTTP2
-static int
-can_uncompress_body(packet_info *pinfo)
+enum body_uncompression {
+    BODY_UNCOMPRESSION_NONE,
+    BODY_UNCOMPRESSION_ZLIB,
+    BODY_UNCOMPRESSION_BROTLI
+};
+
+static enum body_uncompression
+get_body_uncompression_info(packet_info *pinfo)
 {
     http2_data_stream_body_info_t *body_info = get_data_stream_body_info(pinfo);
     gchar *content_encoding = body_info->content_encoding;
 
     /* Check we have a content-encoding header appropriate as well as checking if this is partial content.
      * We can't decompress part of a gzip encoded entity */
-    return http2_decompress_body
-           && body_info->is_partial_content == FALSE
-           && content_encoding != NULL
-           && (strncmp(content_encoding, "gzip", 4) == 0 || strncmp(content_encoding, "deflate", 7) == 0);
+    if (!http2_decompress_body || body_info->is_partial_content == TRUE || content_encoding == NULL) {
+        return BODY_UNCOMPRESSION_NONE;
+    }
+
+#ifdef HAVE_ZLIB
+    if (strncmp(content_encoding, "gzip", 4) == 0 || strncmp(content_encoding, "deflate", 7) == 0) {
+        return BODY_UNCOMPRESSION_ZLIB;
+    }
+#endif
+#ifdef HAVE_BROTLI
+    if (strncmp(content_encoding, "br", 2) == 0) {
+        return BODY_UNCOMPRESSION_BROTLI;
+    }
+#endif
+
+    return BODY_UNCOMPRESSION_NONE;
 }
 
 /* Try to dissect reassembled http2.data.data according to content_type. */
@@ -1964,7 +2024,7 @@ dissect_body_data(proto_tree *tree, packet_info *pinfo, tvbuff_t *tvb,
 {
     http2_data_stream_body_info_t *body_info = get_data_stream_body_info(pinfo);
     gchar *content_type = body_info->content_type;
-    http_message_info_t metadata_used_for_media_type_handle = { HTTP_OTHERS, body_info->content_type_parameters };
+    http_message_info_t metadata_used_for_media_type_handle = { HTTP_OTHERS, body_info->content_type_parameters, NULL, NULL };
 
     proto_tree_add_item(tree, hf_http2_data_data, tvb, start, length, encoding);
 
@@ -1985,9 +2045,17 @@ dissect_http2_data_full_body(tvbuff_t *tvb, packet_info *pinfo, proto_tree *http
 
     gint datalen = tvb_reported_length(tvb);
 
-    if (can_uncompress_body(pinfo)) {
+    enum body_uncompression uncompression = get_body_uncompression_info(pinfo);
+    if (uncompression != BODY_UNCOMPRESSION_NONE) {
         proto_item *compressed_proto_item = NULL;
-        tvbuff_t *uncompressed_tvb = tvb_child_uncompress(tvb, tvb, 0, datalen);
+
+        tvbuff_t *uncompressed_tvb = NULL;
+        if (uncompression == BODY_UNCOMPRESSION_ZLIB) {
+            uncompressed_tvb = tvb_child_uncompress(tvb, tvb, 0, datalen);
+        } else if (uncompression == BODY_UNCOMPRESSION_BROTLI) {
+            uncompressed_tvb = tvb_child_uncompress_brotli(tvb, tvb, 0, datalen);
+        }
+
         http2_data_stream_body_info_t *body_info = get_data_stream_body_info(pinfo);
         gchar *compression_method = body_info->content_encoding;
 
@@ -2265,7 +2333,12 @@ dissect_http2_headers(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *http2_t
     offset = dissect_frame_padding(tvb, &padding, http2_tree, offset, flags);
     offset = dissect_frame_prio(tvb, http2_tree, offset, flags);
 
-    headlen = tvb_reported_length_remaining(tvb, offset) - padding;
+    headlen = tvb_reported_length_remaining(tvb, offset);
+    if (headlen < padding) {
+        /* XXX - what error *should* be reported here? */
+        THROW(ReportedBoundsError);
+    }
+    headlen -= padding;
     proto_tree_add_item(http2_tree, hf_http2_headers, tvb, offset, headlen, ENC_NA);
 
 #ifdef HAVE_NGHTTP2
@@ -2330,7 +2403,7 @@ dissect_http2_settings(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *http2_
 
     while(tvb_reported_length_remaining(tvb, offset) > 0){
 
-        ti_settings = proto_tree_add_item(http2_tree, hf_http2_settings, tvb, offset, 5, ENC_NA);
+        ti_settings = proto_tree_add_item(http2_tree, hf_http2_settings, tvb, offset, 6, ENC_NA);
         settings_tree = proto_item_add_subtree(ti_settings, ett_http2_settings);
         proto_tree_add_item(settings_tree, hf_http2_settings_identifier, tvb, offset, 2, ENC_BIG_ENDIAN);
         settingsid = tvb_get_ntohs(tvb, offset);
@@ -2418,7 +2491,12 @@ dissect_http2_push_promise(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *ht
                         offset, 4, ENC_BIG_ENDIAN);
     offset += 4;
 
-    headlen = tvb_reported_length_remaining(tvb, offset) - padding;
+    headlen = tvb_reported_length_remaining(tvb, offset);
+    if (headlen < padding) {
+        /* XXX - what error *should* be reported here? */
+        THROW(ReportedBoundsError);
+    }
+    headlen -= padding;
     proto_tree_add_item(http2_tree, hf_http2_push_promise_header, tvb, offset, headlen,
                         ENC_NA);
 
@@ -2509,7 +2587,12 @@ dissect_http2_continuation(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *ht
 
     offset = dissect_frame_padding(tvb, &padding, http2_tree, offset, flags);
 
-    headlen = tvb_reported_length_remaining(tvb, offset) - padding;
+    headlen = tvb_reported_length_remaining(tvb, offset);
+    if (headlen < padding) {
+        /* XXX - what error *should* be reported here? */
+        THROW(ReportedBoundsError);
+    }
+    headlen -= padding;
     proto_tree_add_item(http2_tree, hf_http2_continuation_header, tvb, offset, headlen, ENC_ASCII|ENC_NA);
 
 #ifdef HAVE_NGHTTP2
@@ -3026,6 +3109,11 @@ proto_register_http2(void)
               FT_STRING, BASE_NONE, NULL, 0x0,
               NULL, HFILL }
         },
+        { &hf_http2_header_unescaped,
+            { "Unescaped", "http2.header.unescaped",
+              FT_STRING, BASE_NONE, NULL, 0x0,
+              NULL, HFILL }
+        },
         { &hf_http2_header_repr,
             { "Representation", "http2.header.repr",
               FT_STRING, BASE_NONE, NULL, 0x0,
@@ -3302,19 +3390,19 @@ proto_register_http2(void)
 
 static void http2_stats_tree_init(stats_tree* st)
 {
-    st_node_http2 = stats_tree_create_node(st, st_str_http2, 0, TRUE);
+    st_node_http2 = stats_tree_create_node(st, st_str_http2, 0, STAT_DT_INT, TRUE);
     st_node_http2_type = stats_tree_create_pivot(st, st_str_http2_type, st_node_http2);
 
 }
 
-static int http2_stats_tree_packet(stats_tree* st, packet_info* pinfo _U_, epan_dissect_t* edt _U_, const void* p)
+static tap_packet_status http2_stats_tree_packet(stats_tree* st, packet_info* pinfo _U_, epan_dissect_t* edt _U_, const void* p)
 {
     const struct HTTP2Tap *pi = (const struct HTTP2Tap *)p;
     tick_stat_node(st, st_str_http2, 0, FALSE);
     stats_tree_tick_pivot(st, st_node_http2_type,
             val_to_str(pi->type, http2_type_vals, "Unknown type (%d)"));
 
-    return 1;
+    return TAP_PACKET_REDRAW;
 }
 
 void
@@ -3327,19 +3415,20 @@ proto_reg_handoff_http2(void)
     dissector_add_for_decode_as_with_preference("tcp.port", http2_handle);
 
     /*
-     * SSL/TLS Application-Layer Protocol Negotiation (ALPN) protocol
-     * ID.
+     * SSL/TLS Application-Layer Protocol Negotiation (ALPN) protocol ID.
      */
-    dissector_add_string("ssl.handshake.extensions_alpn_str", "h2", http2_handle);
+    dissector_add_string("tls.alpn", "h2", http2_handle);
+    dissector_add_string("http.upgrade", "h2", http2_handle);
+    dissector_add_string("http.upgrade", "h2c", http2_handle);
 
-    heur_dissector_add("ssl", dissect_http2_heur_ssl, "HTTP2 over SSL", "http2_ssl", proto_http2, HEURISTIC_ENABLE);
+    heur_dissector_add("tls", dissect_http2_heur_ssl, "HTTP2 over TLS", "http2_tls", proto_http2, HEURISTIC_ENABLE);
     heur_dissector_add("http", dissect_http2_heur, "HTTP2 over TCP", "http2_tcp", proto_http2, HEURISTIC_ENABLE);
 
     stats_tree_register("http2", "http2", "HTTP2", 0, http2_stats_tree_packet, http2_stats_tree_init, NULL);
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 4

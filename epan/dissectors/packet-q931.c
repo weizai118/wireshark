@@ -3047,7 +3047,9 @@ dissect_q931_IEs(tvbuff_t *tvb, packet_info *pinfo, proto_tree *root_tree,
         }
         codeset = locked_codeset;
     }
-    tap_queue_packet(q931_tap, pinfo, q931_pi);
+    if (q931_pi) {
+        tap_queue_packet(q931_tap, pinfo, q931_pi);
+    }
 }
 
 /*
@@ -3998,7 +4000,7 @@ static void reset_q931_packet_info(q931_packet_info *pi)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 4

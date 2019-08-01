@@ -56,6 +56,7 @@
 #include "packet-smpp.h"
 #include "packet-gsm_sms.h"
 #include "packet-ranap.h"
+#include "packet-isup.h"
 
 #define PNAME  "GSM Mobile Application"
 #define PSNAME "GSM_MAP"
@@ -188,6 +189,9 @@ static gint ett_gsm_map_tbcd_digits = -1;
 static gint ett_gsm_map_ussd_string = -1;
 static gint ett_gsm_map_ext2_qos_subscribed = -1;
 static gint ett_gsm_map_ext3_qos_subscribed = -1;
+static gint ett_gsm_map_e_utranCellGlobalIdentity = -1;
+static gint ett_gsm_map_TA_id = -1;
+static gint ett_gsm_map_GeodeticInformation = -1;
 
 #include "packet-gsm_map-ett.c"
 
@@ -1566,6 +1570,9 @@ static int dissect_invokeData(proto_tree *tree, tvbuff_t *tvb, int offset, asn1_
   case 89: /*noteMM-Event*/
     offset=dissect_gsm_map_ms_NoteMM_EventArg(FALSE, tvb, offset, actx, tree, -1);
     break;
+  case 108: /*SS-protocol lcs-PeriodicTriggeredInvoke*/
+      offset = dissect_gsm_ss_LCS_PeriodicTriggeredInvokeArg(FALSE, tvb, offset, actx, tree, -1);
+      break;
   case 109: /*SS-protocol lcs-PeriodicLocationCancellation*/
     offset=dissect_gsm_ss_LCS_PeriodicLocationCancellationArg(FALSE, tvb, offset, actx, tree, -1);
     break;
@@ -1884,6 +1891,9 @@ static int dissect_returnResultData(proto_tree *tree, tvbuff_t *tvb, int offset,
   case 89: /*noteMM-Event*/
     offset=dissect_gsm_map_ms_NoteMM_EventRes(FALSE, tvb, offset, actx, tree, -1);
     break;
+  case 108: /*SS-protocol LCS-PeriodicTriggeredInvokeRes*/
+      offset = dissect_gsm_ss_LCS_PeriodicTriggeredInvokeRes(FALSE, tvb, offset, actx, tree, -1);
+      break;
   case 109: /*SS-protocol lcs-PeriodicLocationCancellation*/
     /* No parameter */
     break;
@@ -2805,7 +2815,7 @@ static void gsm_map_stat_init(stat_tap_table_ui* new_stat)
   }
 }
 
-static gboolean
+static tap_packet_status
 gsm_map_stat_packet(void *tapdata, packet_info *pinfo _U_, epan_dissect_t *edt _U_, const void *gmtr_ptr)
 {
   stat_data_t* stat_data = (stat_data_t*)tapdata;
@@ -2860,7 +2870,7 @@ gsm_map_stat_packet(void *tapdata, packet_info *pinfo _U_, epan_dissect_t *edt _
   avg_data = stat_tap_get_field_data(table, gmtr->opcode, AVG_BYTES_COLUMN);
   avg_data->value.float_value += (float) (fwd_bytes + rev_bytes) / (invokes + results);
   stat_tap_set_field_data(table, gmtr->opcode, AVG_BYTES_COLUMN, avg_data);
-  return TRUE;
+  return TAP_PACKET_REDRAW;
 }
 
 static void
@@ -3431,6 +3441,9 @@ void proto_register_gsm_map(void) {
     &ett_gsm_map_ussd_string,
     &ett_gsm_map_ext2_qos_subscribed,
     &ett_gsm_map_ext3_qos_subscribed,
+    &ett_gsm_map_e_utranCellGlobalIdentity,
+    &ett_gsm_map_TA_id,
+    &ett_gsm_map_GeodeticInformation,
 
 #include "packet-gsm_map-ettarr.c"
   };
@@ -3500,7 +3513,7 @@ void proto_register_gsm_map(void) {
    * Register our configuration options, particularly our ssn:s
    * Set default SSNs
    */
-  range_convert_str(wmem_epan_scope(), &global_ssn_range, "6-9", MAX_SSN);
+  range_convert_str(wmem_epan_scope(), &global_ssn_range, "6-9,145,148-150", MAX_SSN);
 
   gsm_map_module = prefs_register_protocol(proto_gsm_map, proto_reg_handoff_gsm_map);
 

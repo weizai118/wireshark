@@ -67,7 +67,8 @@ col_setup(column_info *cinfo, const gint num_cols)
     cinfo->col_last[i] = -1;
   }
   cinfo->prime_regex = g_regex_new(COL_CUSTOM_PRIME_REGEX,
-    G_REGEX_ANCHORED, G_REGEX_MATCH_ANCHORED, NULL);
+    (GRegexCompileFlags) (G_REGEX_ANCHORED | G_REGEX_RAW),
+    G_REGEX_MATCH_ANCHORED, NULL);
 }
 
 static void
@@ -308,7 +309,7 @@ col_clear(column_info *cinfo, const gint el)
   }
 
 #define COL_CHECK_REF_TIME(fd, buf)         \
-  if (fd->flags.ref_time) {                 \
+  if (fd->ref_time) {                 \
     g_strlcpy(buf, "*REF*", COL_MAX_LEN );  \
     return;                                 \
   }
@@ -456,7 +457,7 @@ void
 col_append_frame_number(packet_info *pinfo, const gint col, const gchar *fmt_str, guint frame_num)
 {
   col_append_fstr(pinfo->cinfo, col, fmt_str, frame_num);
-  if (!pinfo->fd->flags.visited) {
+  if (!pinfo->fd->visited) {
     col_data_changed_ = TRUE;
   }
 }
@@ -879,7 +880,7 @@ set_abs_ymd_time(const frame_data *fd, gchar *buf, char *decimal_point, gboolean
   time_t then;
   int tsprecision;
 
-  if (fd->flags.has_ts) {
+  if (fd->has_ts) {
     then = fd->abs_ts.secs;
     if (local)
       tmp = localtime(&then);
@@ -1013,7 +1014,7 @@ set_abs_ydoy_time(const frame_data *fd, gchar *buf, char *decimal_point, gboolea
   time_t then;
   int tsprecision;
 
-  if (fd->flags.has_ts) {
+  if (fd->has_ts) {
     then = fd->abs_ts.secs;
     if (local)
       tmp = localtime(&then);
@@ -1385,7 +1386,7 @@ col_set_rel_time(const frame_data *fd, column_info *cinfo, const int col)
 {
   nstime_t del_rel_ts;
 
-  if (!fd->flags.has_ts) {
+  if (!fd->has_ts) {
     cinfo->columns[col].col_buf[0] = '\0';
     return;
   }
@@ -1439,7 +1440,7 @@ col_set_delta_time_dis(const frame_data *fd, column_info *cinfo, const int col)
 {
   nstime_t del_dis_ts;
 
-  if (!fd->flags.has_ts) {
+  if (!fd->has_ts) {
     cinfo->columns[col].col_buf[0] = '\0';
     return;
   }
@@ -1471,7 +1472,7 @@ set_abs_time(const frame_data *fd, gchar *buf, char *decimal_point, gboolean loc
   time_t then;
   int tsprecision;
 
-  if (fd->flags.has_ts) {
+  if (fd->has_ts) {
     then = fd->abs_ts.secs;
     if (local)
       tmp = localtime(&then);
@@ -1586,7 +1587,7 @@ set_epoch_time(const frame_data *fd, gchar *buf)
 {
   int tsprecision;
 
-  if (!fd->flags.has_ts) {
+  if (!fd->has_ts) {
     buf[0] = '\0';
     return FALSE;
   }
@@ -1674,7 +1675,7 @@ set_fd_time(const epan_t *epan, frame_data *fd, gchar *buf)
     break;
 
   case TS_RELATIVE:
-    if (fd->flags.has_ts) {
+    if (fd->has_ts) {
       nstime_t del_rel_ts;
 
       frame_delta_abs_time(epan, fd, fd->frame_ref_num, &del_rel_ts);
@@ -1695,7 +1696,7 @@ set_fd_time(const epan_t *epan, frame_data *fd, gchar *buf)
     break;
 
   case TS_DELTA:
-    if (fd->flags.has_ts) {
+    if (fd->has_ts) {
       nstime_t del_cap_ts;
 
       frame_delta_abs_time(epan, fd, fd->num - 1, &del_cap_ts);
@@ -1716,7 +1717,7 @@ set_fd_time(const epan_t *epan, frame_data *fd, gchar *buf)
     break;
 
   case TS_DELTA_DIS:
-    if (fd->flags.has_ts) {
+    if (fd->has_ts) {
       nstime_t del_dis_ts;
 
       frame_delta_abs_time(epan, fd, fd->prev_dis_num, &del_dis_ts);
@@ -1883,7 +1884,7 @@ col_set_time(column_info *cinfo, const gint el, const nstime_t *ts, const char *
   if (!CHECK_COL(cinfo, el))
     return;
 
-  /** @todo TODO: We don't respect fd->flags.ref_time (no way to access 'fd')
+  /** @todo TODO: We don't respect fd->ref_time (no way to access 'fd')
   COL_CHECK_REF_TIME(fd, buf);
   */
 

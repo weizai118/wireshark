@@ -59,104 +59,16 @@ WelcomePage::WelcomePage(QWidget *parent) :
 
     welcome_ui_->captureFilterComboBox->setEnabled(false);
 
-    QColor hover_color = ColorUtils::alphaBlend(palette().window(), palette().highlight(), 0.5);
+    updateStyleSheets();
 
-    QString welcome_ss = QString(
-                "WelcomePage {"
-                "  padding: 1em;"
-                " }"
-                "WelcomePage, QAbstractItemView {"
-                "  background-color: palette(base);"
-                "  color: palette(text);"
-                " }"
-                "QAbstractItemView {"
-                "  border: 0;"
-                "}"
-                );
-#if !defined(Q_OS_WIN)
-    welcome_ss += QString(
-                "QAbstractItemView:item:hover {"
-                "  background-color: %1;"
-                "  color: palette(text);"
-                "}"
-                )
-            .arg(hover_color.name());
-#endif
-    setStyleSheet(welcome_ss);
-
-    QString banner_ss = QString(
-                "QLabel {"
-                "  border-radius: 0.33em;"
-                "  color: %1;"
-                "  background-color: %2;"
-                "  padding: 0.33em;"
-                "}"
-                )
-            .arg(QColor(tango_aluminium_6).name())   // Text color
-            .arg(QColor(tango_sky_blue_2).name());   // Background color
-    welcome_ui_->mainWelcomeBanner->setStyleSheet(banner_ss);
-
-    QString title_button_ss = QString(
-            "QLabel {"
-            "  color: %1;"
-            "}"
-            "QLabel::hover {"
-            "  color: %2;"
-            "}"
-            )
-            .arg(QColor(tango_aluminium_4).name())   // Text color
-            .arg(QColor(tango_sky_blue_4).name());   // Hover color
-
-    // XXX Is there a better term than "flavor"? Provider? Admonition (a la DocBook)?
-    // Release_source?
-    // Typical use cases are automated builds from wireshark.org and private,
-    // not-for-redistribution packages.
-    if (flavor_.isEmpty()) {
-        welcome_ui_->flavorBanner->hide();
-    } else {
-        // If needed there are a couple of ways we can make this customizable.
-        // - Add one or more classes, e.g. "note" or "warning" similar to
-        //   SyntaxLineEdit, which we can then expose vi #defines.
-        // - Just expose direct color values via #defines.
-        QString flavor_ss = QString(
-                    "QLabel {"
-                    "  border-radius: 0.25em;"
-                    "  color: %1;"
-                    "  background-color: %2;"
-                    "  padding: 0.25em;"
-                    "}"
-                    )
-                .arg("white") //   Text color
-                .arg("#2c4bc4"); // Background color. Matches capture start button.
-        //            .arg(QColor(tango_butter_5).name());      // "Warning" background
-
-        welcome_ui_->flavorBanner->setText(flavor_);
-        welcome_ui_->flavorBanner->setStyleSheet(flavor_ss);
-    }
-    welcome_ui_->captureLabel->setStyleSheet(title_button_ss);
-    welcome_ui_->recentLabel->setStyleSheet(title_button_ss);
-    welcome_ui_->helpLabel->setStyleSheet(title_button_ss);
 
 #ifdef Q_OS_MAC
     recent_files_->setAttribute(Qt::WA_MacShowFocusRect, false);
 #endif
 
     welcome_ui_->openFrame->hide();
-    recent_files_->setStyleSheet(
-            "QListWidget::item {"
-            "  padding-top: 0.2em;"
-            "  padding-bottom: 0.2em;"
-            "}"
-            "QListWidget::item::first {"
-            "  padding-top: 0;"
-            "}"
-            "QListWidget::item::last {"
-            "  padding-bottom: 0;"
-            "}"
-            );
     recent_files_->setTextElideMode(Qt::ElideLeft);
 
-    recent_ctx_menu_ = new QMenu(this);
     welcome_ui_->recentList->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(recent_files_, SIGNAL(customContextMenuRequested(QPoint)),
             this, SLOT(showRecentContextMenu(QPoint)));
@@ -231,7 +143,7 @@ void WelcomePage::appInitialized()
         full_release = tr("You are running Wireshark ");
     }
     full_release += get_ws_vcs_version_info();
-    full_release += tr(".");
+    full_release += ".";
 #ifdef HAVE_SOFTWARE_UPDATE
     if (prefs.gui_update_enabled) {
         full_release += tr(" You receive automatic updates.");
@@ -317,6 +229,19 @@ void WelcomePage::interfaceSelected()
     emit interfacesChanged();
 }
 
+bool WelcomePage::event(QEvent *event)
+{
+    switch (event->type()) {
+    case QEvent::ApplicationPaletteChange:
+        updateStyleSheets();
+        break;
+    default:
+        break;
+
+    }
+    return QFrame::event(event);
+}
+
 void WelcomePage::on_interfaceFrame_showExtcapOptions(QString device_name)
 {
     emit showExtcapOptions(device_name);
@@ -376,7 +301,7 @@ void WelcomePage::updateRecentCaptures() {
         rfItem->setFlags(ri->accessible ? Qt::ItemIsSelectable | Qt::ItemIsEnabled : Qt::NoItemFlags);
         rfItem->setFont(rfFont);
         if (ri->filename == selectedFilename) {
-            recent_files_->setItemSelected(rfItem, true);
+            rfItem->setSelected(true);
         }
         rfRow++;
     }
@@ -436,25 +361,25 @@ void WelcomePage::showRecentContextMenu(QPoint pos)
     QListWidgetItem *li = recent_files_->itemAt(pos);
     if (!li) return;
 
-    recent_ctx_menu_->clear();
+    QMenu recent_ctx_menu;
 
     QString cf_path = li->data(Qt::UserRole).toString();
 
-    QAction *show_action = recent_ctx_menu_->addAction(show_in_str_);
+    QAction *show_action = recent_ctx_menu.addAction(show_in_str_);
     show_action->setData(cf_path);
     connect(show_action, SIGNAL(triggered(bool)), this, SLOT(showRecentFolder()));
 
-    QAction *copy_action = recent_ctx_menu_->addAction(tr("Copy file path"));
+    QAction *copy_action = recent_ctx_menu.addAction(tr("Copy file path"));
     copy_action->setData(cf_path);
     connect(copy_action, SIGNAL(triggered(bool)), this, SLOT(copyRecentPath()));
 
-    recent_ctx_menu_->addSeparator();
+    recent_ctx_menu.addSeparator();
 
-    QAction *remove_action = recent_ctx_menu_->addAction(tr("Remove"));
+    QAction *remove_action = recent_ctx_menu.addAction(tr("Remove from list"));
     remove_action->setData(cf_path);
     connect(remove_action, SIGNAL(triggered(bool)), this, SLOT(removeRecentPath()));
 
-    recent_ctx_menu_->exec(recent_files_->mapToGlobal(pos));
+    recent_ctx_menu.exec(recent_files_->mapToGlobal(pos));
 }
 
 void WelcomePage::showRecentFolder()
@@ -496,6 +421,107 @@ void WelcomePage::on_captureLabel_clicked()
 void WelcomePage::on_helpLabel_clicked()
 {
     QDesktopServices::openUrl(QUrl(topic_online_url(ONLINEPAGE_DOCS)));
+}
+
+void WelcomePage::updateStyleSheets()
+{
+    QColor hover_color = ColorUtils::alphaBlend(palette().window(), palette().highlight(), 0.5);
+
+    QString welcome_ss = QString(
+                "WelcomePage {"
+                "  padding: 1em;"
+                " }"
+                "WelcomePage, QAbstractItemView {"
+                "  background-color: palette(base);"
+                "  color: palette(text);"
+                " }"
+                "QAbstractItemView {"
+                "  border: 0;"
+                "}"
+                );
+#if !defined(Q_OS_WIN)
+    welcome_ss += QString(
+                "QAbstractItemView:item:hover {"
+                "  background-color: %1;"
+                "  color: palette(text);"
+                "}"
+                )
+            .arg(hover_color.name());
+#endif
+    setStyleSheet(welcome_ss);
+
+    QString banner_ss = QString(
+                "QLabel {"
+                "  border-radius: 0.33em;"
+                "  color: %1;"
+                "  background-color: %2;"
+                "  padding: 0.33em;"
+                "}"
+                )
+            .arg(QColor(tango_aluminium_6).name())   // Text color
+            .arg(QColor(tango_sky_blue_2).name());   // Background color
+    welcome_ui_->mainWelcomeBanner->setStyleSheet(banner_ss);
+
+    QString title_button_ss = QString(
+            "QLabel {"
+            "  color: %1;"
+            "}"
+            "QLabel::hover {"
+            "  color: %2;"
+            "}"
+            )
+            .arg(QColor(tango_aluminium_4).name())   // Text color
+            .arg(QColor(tango_sky_blue_4).name());   // Hover color
+
+    // XXX Is there a better term than "flavor"? Provider? Admonition (a la DocBook)?
+    // Release_source?
+    // Typical use cases are automated builds from wireshark.org and private,
+    // not-for-redistribution packages.
+    if (flavor_.isEmpty()) {
+        welcome_ui_->flavorBanner->hide();
+    } else {
+        // If needed there are a couple of ways we can make this customizable.
+        // - Add one or more classes, e.g. "note" or "warning" similar to
+        //   SyntaxLineEdit, which we can then expose vi #defines.
+        // - Just expose direct color values via #defines.
+        QString flavor_ss = QString(
+                    "QLabel {"
+                    "  border-radius: 0.25em;"
+                    "  color: %1;"
+                    "  background-color: %2;"
+                    "  padding: 0.25em;"
+                    "}"
+                    )
+                .arg("white") //   Text color
+                .arg("#2c4bc4"); // Background color. Matches capture start button.
+        //            .arg(QColor(tango_butter_5).name());      // "Warning" background
+
+        welcome_ui_->flavorBanner->setText(flavor_);
+        welcome_ui_->flavorBanner->setStyleSheet(flavor_ss);
+    }
+    welcome_ui_->captureLabel->setStyleSheet(title_button_ss);
+    welcome_ui_->recentLabel->setStyleSheet(title_button_ss);
+    welcome_ui_->helpLabel->setStyleSheet(title_button_ss);
+
+    recent_files_->setStyleSheet(
+            "QListWidget::item {"
+            "  padding-top: 0.2em;"
+            "  padding-bottom: 0.2em;"
+            "}"
+            "QListWidget::item::first {"
+            "  padding-top: 0;"
+            "}"
+            "QListWidget::item::last {"
+            "  padding-bottom: 0;"
+            "}"
+            );
+
+    // The helpLinks markup includes its own <style>...</style> section.
+    // Replacing it with a stylesheet and reapplying it like we do above
+    // doesn't work, but this does.
+    QString hl_text = welcome_ui_->helpLinks->text();
+    welcome_ui_->helpLinks->clear();
+    welcome_ui_->helpLinks->setText(hl_text);
 }
 
 void WelcomePage::on_recentLabel_clicked()

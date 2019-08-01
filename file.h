@@ -150,29 +150,31 @@ cf_read_status_t cf_read(capture_file *cf, gboolean from_save);
  * @param buf a Buffer into which to read the record's raw data
  * @return TRUE if the read succeeded, FALSE if there was an error
  */
-gboolean cf_read_record_r(capture_file *cf, const frame_data *fdata,
+gboolean cf_read_record(capture_file *cf, const frame_data *fdata,
                           wtap_rec *rec, Buffer *buf);
 
 /**
- * Read the metadata and raw data for a record into a
- * capture_file structure's phdr and buf members.
+ * Read the metadata and raw data for the current record into a
+ * capture_file structure's rec and buf for the current record.
  * It will pop up an alert box if there's an error.
  *
  * @param cf the capture file from which to read the record
- * @param fdata the frame_data structure for the record in question
  * @return TRUE if the read succeeded, FALSE if there was an error
  */
-gboolean cf_read_record(capture_file *cf, frame_data *fdata);
+gboolean cf_read_current_record(capture_file *cf);
 
 /**
  * Read packets from the "end" of a capture file.
  *
  * @param cf the capture file to be read from
  * @param to_read the number of packets to read
+ * @param rec pointer to wtap_rec to use when reading
+ * @param buf pointer to Buffer to use when reading
  * @param err the error code, if an error had occurred
  * @return one of cf_read_status_t
  */
-cf_read_status_t cf_continue_tail(capture_file *cf, volatile int to_read, int *err);
+cf_read_status_t cf_continue_tail(capture_file *cf, volatile int to_read,
+                                  wtap_rec *rec, Buffer *buf, int *err);
 
 /**
  * Fake reading packets from the "end" of a capture file.
@@ -185,10 +187,13 @@ void cf_fake_continue_tail(capture_file *cf);
  * Finish reading from "end" of a capture file.
  *
  * @param cf the capture file to be read from
+ * @param rec pointer to wtap_rec to use when reading
+ * @param buf pointer to Buffer to use when reading
  * @param err the error code, if an error had occurred
  * @return one of cf_read_status_t
  */
-cf_read_status_t cf_finish_tail(capture_file *cf, int *err);
+cf_read_status_t cf_finish_tail(capture_file *cf, wtap_rec *rec,
+                                Buffer *buf, int *err);
 
 /**
  * Determine whether this capture file (or a range of it) can be written
@@ -234,7 +239,7 @@ gboolean cf_has_unsaved_data(capture_file *cf);
  * @param cf the capture file to save to
  * @param fname the filename to save to
  * @param save_format the format of the file to save (libpcap, ...)
- * @param compressed whether to gzip compress the file
+ * @param compression_type type of compression to use when writing, if any
  * @param discard_comments TRUE if we should discard comments if the save
  * succeeds (because we saved in a format that doesn't support
  * comments)
@@ -243,7 +248,8 @@ gboolean cf_has_unsaved_data(capture_file *cf);
  * @return one of cf_write_status_t
  */
 cf_write_status_t cf_save_records(capture_file * cf, const char *fname,
-                                  guint save_format, gboolean compressed,
+                                  guint save_format,
+                                  wtap_compression_type compression_type,
                                   gboolean discard_comments,
                                   gboolean dont_reopen);
 
@@ -258,14 +264,14 @@ cf_write_status_t cf_save_records(capture_file * cf, const char *fname,
  * @param fname the filename to write to
  * @param range the range of packets to write
  * @param save_format the format of the file to write (libpcap, ...)
- * @param compressed whether to gzip compress the file
+ * @param compression_type type of compression to use when writing, if any
  * @return one of cf_write_status_t
  */
 cf_write_status_t cf_export_specified_packets(capture_file *cf,
                                               const char *fname,
                                               packet_range_t *range,
                                               guint save_format,
-                                              gboolean compressed);
+                                              wtap_compression_type compression_type);
 
 /**
  * Get a displayable name of the capture file.
@@ -274,6 +280,17 @@ cf_write_status_t cf_export_specified_packets(capture_file *cf,
  * @return the displayable name (must be g_free'd)
  */
 gchar *cf_get_display_name(capture_file *cf);
+
+/**
+ * Get a name that can be used to generate a file name from the
+ * capture file name.  It's based on the displayable name, so it's
+ * UTF-8; if it ends with a suffix that's used by a file type libwiretap
+ * can read, we strip that suffix off.
+ *
+ * @param cf the capture file
+ * @return the base name (must be g_free'd)
+ */
+gchar *cf_get_basename(capture_file *cf);
 
 /**
  * Set the source of the capture data for temporary files, e.g.
@@ -674,6 +691,7 @@ void cf_update_section_comment(capture_file *cf, gchar *comment);
  *
  * @param cf the capture file
  * @param fd the frame_data structure for the frame
+ * @returns A comment (use g_free to free) or NULL if there is none.
  */
 char *cf_get_packet_comment(capture_file *cf, const frame_data *fd);
 
@@ -711,7 +729,7 @@ gboolean cf_add_ip_name_from_string(capture_file *cf, const char *addr, const ch
 #endif /* file.h */
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 4

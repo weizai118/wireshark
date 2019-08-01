@@ -33,6 +33,9 @@ public:
     void acceptChanges();
     void rejectChanges();
 
+protected:
+    void showEvent(QShowEvent *);
+
 private:
     Ui::UatFrame *ui;
 
@@ -46,6 +49,7 @@ private:
     void applyChanges();
 
 private slots:
+    void copyFromProfile(QAction *action);
     void modelDataChanged(const QModelIndex &topLeft);
     void modelRowsRemoved();
     void modelRowsReset();

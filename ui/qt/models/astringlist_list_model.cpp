@@ -15,6 +15,8 @@
 
 #include <ui/qt/models/astringlist_list_model.h>
 
+#include <ui/qt/utils/color_utils.h>
+
 AStringListListModel::AStringListListModel(QObject * parent):
 QAbstractTableModel(parent)
 {}
@@ -33,10 +35,8 @@ void AStringListListModel::appendRow(const QStringList & display_strings, const 
     emit endInsertRows();
 }
 
-int AStringListListModel::rowCount(const QModelIndex &parent) const
+int AStringListListModel::rowCount(const QModelIndex &) const
 {
-    Q_UNUSED(parent);
-
     return display_data_.count();
 }
 
@@ -189,7 +189,7 @@ QVariant AStringListListUrlProxyModel::data(const QModelIndex &index, int role) 
             if ( result.canConvert(QVariant::Brush) )
             {
                 QBrush selected = result.value<QBrush>();
-                selected.setColor(QApplication::palette().link().color());
+                selected.setColor(ColorUtils::themeLinkBrush().color());
                 return selected;
             }
         } else if ( role == Qt::TextColorRole ) {

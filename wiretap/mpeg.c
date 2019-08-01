@@ -182,12 +182,12 @@ mpeg_read_packet(wtap *wth, FILE_T fh, wtap_rec *rec, Buffer *buf,
 }
 
 static gboolean
-mpeg_read(wtap *wth, int *err, gchar **err_info, gint64 *data_offset)
+mpeg_read(wtap *wth, wtap_rec *rec, Buffer *buf, int *err,
+		gchar **err_info, gint64 *data_offset)
 {
 	*data_offset = file_tell(wth->fh);
 
-	return mpeg_read_packet(wth, wth->fh, &wth->rec, wth->rec_data,
-	    FALSE, err, err_info);
+	return mpeg_read_packet(wth, wth->fh, rec, buf, FALSE, err, err_info);
 }
 
 static gboolean
@@ -214,7 +214,7 @@ struct _mpeg_magic {
 	{ 3, "TAG" }, /* ID3v1 */
 	{ 3, "ID3" }, /* ID3v2 */
 	{ 3, "\0\0\1" }, /* MPEG PES */
-	{ 2, "\xff\xfb" }, /* MP3, taken from http://en.wikipedia.org/wiki/MP3#File_structure */
+	{ 2, "\xff\xfb" }, /* MP3, taken from https://en.wikipedia.org/wiki/MP3#File_structure */
 	{ 0, NULL }
 };
 
@@ -261,7 +261,7 @@ good_magic:
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

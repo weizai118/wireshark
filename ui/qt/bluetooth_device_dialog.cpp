@@ -56,7 +56,7 @@ static const int row_number_page_timeout = 19;
 static const int row_number_simple_pairing_mode = 20;
 static const int row_number_voice_setting = 21;
 
-static gboolean
+static tap_packet_status
 bluetooth_device_tap_packet(void *tapinfo_ptr, packet_info *pinfo, epan_dissect_t *edt, const void* data)
 {
     bluetooth_device_tapinfo_t *tapinfo = (bluetooth_device_tapinfo_t *) tapinfo_ptr;
@@ -64,7 +64,7 @@ bluetooth_device_tap_packet(void *tapinfo_ptr, packet_info *pinfo, epan_dissect_
     if (tapinfo->tap_packet)
         tapinfo->tap_packet(tapinfo, pinfo, edt, data);
 
-    return TRUE;
+    return TAP_PACKET_REDRAW;
 }
 
 static void
@@ -86,6 +86,7 @@ bluetooth_devices_tap(void *data)
             0,
             bluetooth_device_tap_reset,
             bluetooth_device_tap_packet,
+            NULL,
             NULL
             );
 
@@ -210,10 +211,14 @@ void BluetoothDeviceDialog::keyPressEvent(QKeyEvent *event)
 
 void BluetoothDeviceDialog::on_actionMark_Unmark_Cell_triggered()
 {
+    QTableWidgetItem *current_item = ui->tableWidget->currentItem();
+    if (!current_item)
+        return;
+
     QBrush fg;
     QBrush bg;
 
-    if (ui->tableWidget->currentItem()->background() == QBrush(ColorUtils::fromColorT(&prefs.gui_marked_bg))) {
+    if (current_item->background() == QBrush(ColorUtils::fromColorT(&prefs.gui_marked_bg))) {
         fg = QBrush();
         bg = QBrush();
     } else {
@@ -221,8 +226,8 @@ void BluetoothDeviceDialog::on_actionMark_Unmark_Cell_triggered()
         bg = QBrush(ColorUtils::fromColorT(&prefs.gui_marked_bg));
     }
 
-    ui->tableWidget->currentItem()->setForeground(fg);
-    ui->tableWidget->currentItem()->setBackground(bg);
+    current_item->setForeground(fg);
+    current_item->setBackground(bg);
 }
 
 
@@ -232,8 +237,13 @@ void BluetoothDeviceDialog::on_actionMark_Unmark_Row_triggered()
     QBrush bg;
     bool   is_marked = TRUE;
 
+    QTableWidgetItem *current_item = ui->tableWidget->currentItem();
+    if (!current_item)
+        return;
+
     for (int i = 0; i < ui->tableWidget->columnCount(); i += 1) {
-        if (ui->tableWidget->item((ui->tableWidget->currentItem())->row(), i)->background() != QBrush(ColorUtils::fromColorT(&prefs.gui_marked_bg)))
+        QTableWidgetItem *item = ui->tableWidget->item(current_item->row(), i);
+        if (item->background() != QBrush(ColorUtils::fromColorT(&prefs.gui_marked_bg)))
             is_marked = FALSE;
     }
 
@@ -246,8 +256,9 @@ void BluetoothDeviceDialog::on_actionMark_Unmark_Row_triggered()
     }
 
     for (int i = 0; i < ui->tableWidget->columnCount(); i += 1) {
-        ui->tableWidget->item((ui->tableWidget->currentItem())->row(), i)->setForeground(fg);
-        ui->tableWidget->item((ui->tableWidget->currentItem())->row(), i)->setBackground(bg);
+        QTableWidgetItem *item = ui->tableWidget->item(current_item->row(), i);
+        item->setForeground(fg);
+        item->setBackground(bg);
     }
 }
 
@@ -259,10 +270,14 @@ void BluetoothDeviceDialog::tableContextMenu(const QPoint &pos)
 
 void BluetoothDeviceDialog::on_actionCopy_Cell_triggered()
 {
-    QClipboard             *clipboard = QApplication::clipboard();
-    QString                 copy;
+    QTableWidgetItem *current_item = ui->tableWidget->currentItem();
+    if (!current_item)
+        return;
 
-    copy = QString(ui->tableWidget->currentItem()->text());
+    QClipboard *clipboard = QApplication::clipboard();
+    QString     copy;
+
+    copy = QString(current_item->text());
 
     clipboard->setText(copy);
 }
@@ -358,7 +373,7 @@ void BluetoothDeviceDialog::saveItemData(QTableWidgetItem *item,
 
 }
 
-gboolean BluetoothDeviceDialog::tapPacket(void *tapinfo_ptr, packet_info *pinfo, epan_dissect_t *, const void *data)
+tap_packet_status BluetoothDeviceDialog::tapPacket(void *tapinfo_ptr, packet_info *pinfo, epan_dissect_t *, const void *data)
 {
     bluetooth_device_tapinfo_t   *tapinfo    = static_cast<bluetooth_device_tapinfo_t *>(tapinfo_ptr);
     BluetoothDeviceDialog        *dialog     = static_cast<BluetoothDeviceDialog *>(tapinfo->ui);
@@ -374,14 +389,14 @@ gboolean BluetoothDeviceDialog::tapPacket(void *tapinfo_ptr, packet_info *pinfo,
     tableWidget = dialog->ui->tableWidget;
 
     if (!((!tap_device->is_local && tap_device->has_bd_addr) || (tap_device->is_local && tapinfo->is_local && tap_device->interface_id == tapinfo->interface_id && tap_device->adapter_id == tapinfo->adapter_id))) {
-        return TRUE;
+        return TAP_PACKET_REDRAW;
     }
 
     if (!tap_device->is_local && tap_device->has_bd_addr) {
         bd_addr.sprintf("%02x:%02x:%02x:%02x:%02x:%02x", tap_device->bd_addr[0], tap_device->bd_addr[1], tap_device->bd_addr[2], tap_device->bd_addr[3], tap_device->bd_addr[4], tap_device->bd_addr[5]);
 
         if (bd_addr != tapinfo->bdAddr)
-            return TRUE;
+            return TAP_PACKET_REDRAW;
     }
 
     if (tap_device->has_bd_addr) {
@@ -615,7 +630,7 @@ gboolean BluetoothDeviceDialog::tapPacket(void *tapinfo_ptr, packet_info *pinfo,
 
     dialog->ui->hintLabel->setText(QString(tr("%1 changes")).arg(*tapinfo->changes));
 
-    return TRUE;
+    return TAP_PACKET_REDRAW;
 }
 
 void BluetoothDeviceDialog::interfaceCurrentIndexChanged(int)
@@ -654,7 +669,7 @@ void BluetoothDeviceDialog::on_actionSave_as_image_triggered()
 
     if (fileName.isEmpty()) return;
 
-    image = QPixmap::grabWidget(ui->tableWidget);
+    image = ui->tableWidget->grab();
     image.save(fileName, "PNG");
 }
 

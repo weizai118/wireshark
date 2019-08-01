@@ -42,7 +42,7 @@ public:
     explicit FollowStreamDialog(QWidget &parent, CaptureFile &cf, follow_type_t type = FOLLOW_TCP);
     ~FollowStreamDialog();
 
-    bool follow(QString previous_filter = QString(), bool use_stream_index = false, int stream_num = -1);
+    bool follow(QString previous_filter = QString(), bool use_stream_index = false, guint stream_num = 0);
 
 public slots:
     void captureEvent(CaptureEvent e);
@@ -119,9 +119,7 @@ private:
     int                     turns_;
     QMap<int,guint32>       text_pos_to_packet_;
 
-    bool                    save_as_;
     bool                    use_regex_find_;
-    QFile                   file_;
 
     bool                    terminating_;
 };
@@ -129,7 +127,7 @@ private:
 #endif // FOLLOW_STREAM_DIALOG_H
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 4

@@ -19,6 +19,7 @@
 
 #include <epan/packet.h>
 #include <epan/tvbparse.h>
+#include <epan/proto_data.h>
 #include <wsutil/wsjson.h>
 
 #include <wsutil/str_util.h>
@@ -206,6 +207,8 @@ dissect_json(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data)
 	}
 
 	offset = 0;
+	/* XXX*/
+	p_add_proto_data(pinfo->pool, pinfo, proto_json, 0, tvb);
 
 	parser_data.stack = wmem_stack_new(wmem_packet_scope());
 	wmem_stack_push(parser_data.stack, json_tree);
@@ -755,7 +758,7 @@ dissect_json_heur(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *dat
 	guint len = tvb_captured_length(tvb);
 	const guint8* buf = tvb_get_string_enc(wmem_packet_scope(), tvb, 0, len, ENC_ASCII);
 
-	if (wsjson_is_valid_json(buf, len) == FALSE)
+	if (json_validate(buf, len) == FALSE)
 		return FALSE;
 
 	return (dissect_json(tvb, pinfo, tree, data) != 0);
@@ -836,7 +839,7 @@ proto_reg_handoff_json(void)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

@@ -65,8 +65,9 @@ FieldFilterEdit::FieldFilterEdit(QWidget *parent) :
     //     Apply (right arrow)
     //     Combo drop-down
 
-    connect(this, SIGNAL(textChanged(const QString&)), this, SLOT(checkFilter(const QString&)));
-//        connect(this, SIGNAL(returnPressed()), this, SLOT(applyDisplayFilter()));
+    connect(this, &FieldFilterEdit::textChanged, this,
+            static_cast<void (FieldFilterEdit::*)(const QString &)>(&FieldFilterEdit::checkFilter));
+//        connect(this, &FieldFilterEdit::returnPressed, this, &FieldFilterEdit::applyDisplayFilter);
 }
 
 void FieldFilterEdit::setDefaultPlaceholderText()
@@ -152,9 +153,8 @@ void FieldFilterEdit::buildCompletionList(const QString &field_word)
         protocol_t *protocol = find_protocol_by_id(proto_id);
         if (!proto_is_protocol_enabled(protocol)) continue;
 
-        // Don't complete the current word.
         const QString pfname = proto_get_protocol_filter_name(proto_id);
-        if (field_word.compare(pfname)) field_list << pfname;
+        field_list << pfname;
 
         // Add fields only if we're past the protocol name and only for the
         // current protocol.

@@ -812,8 +812,6 @@ dissect_lorawan(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void *d
 		} else {
 			current_offset += frmpayload_length;
 		}
-	} else if (mac_mtype == LORAWAN_MAC_MTYPE_PROPRIETARY) {
-		current_offset = tvb_captured_length(tvb) - 4;
 	} else {
 		/* RFU */
 		current_offset = tvb_captured_length(tvb) - 4;
@@ -1398,10 +1396,11 @@ proto_reg_handoff_lorawan(void)
 	static dissector_handle_t lorawan_handle;
 	lorawan_handle = create_dissector_handle(dissect_lorawan, proto_lorawan);
 	dissector_add_uint("loratap.syncword", 0x34, lorawan_handle);
+	dissector_add_for_decode_as("udp.port", lorawan_handle);
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

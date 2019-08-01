@@ -54,6 +54,7 @@
 #define ENV_CONFIG_PATH_VAR  "WIRESHARK_CONFIG_DIR"
 
 char *persconffile_dir = NULL;
+char *datafile_dir = NULL;
 char *persdatafile_dir = NULL;
 char *persconfprofile = NULL;
 
@@ -314,12 +315,17 @@ static gboolean running_in_build_directory_flag = FALSE;
  * use realpath() if they want the real thing, but that's also true of
  * something obtained by looking at argv[0].
  */
+#define xx_free free  /* hack so checkAPIs doesn't complain */
 static const char *
 get_executable_path(void)
 {
 #if defined(__APPLE__)
-    char *executable_path;
+    static char *executable_path;
     uint32_t path_buf_size;
+
+    if (executable_path) {
+        return executable_path;
+    }
 
     path_buf_size = PATH_MAX;
     executable_path = (char *)g_malloc(path_buf_size);
@@ -327,6 +333,16 @@ get_executable_path(void)
         executable_path = (char *)g_realloc(executable_path, path_buf_size);
         if (_NSGetExecutablePath(executable_path, &path_buf_size) == -1)
             return NULL;
+    }
+    /*
+     * Resolve our path so that it's possible to symlink the executables
+     * in our application bundle.
+     */
+    char *rp_execpath = realpath(executable_path, NULL);
+    if (rp_execpath) {
+        g_free(executable_path);
+        executable_path = g_strdup(rp_execpath);
+        xx_free(rp_execpath);
     }
     return executable_path;
 #elif defined(__linux__)
@@ -585,7 +601,7 @@ init_progfile_dir(const char *arg0
         if (getcwd(curdir, path_max) == NULL) {
             /*
              * It failed - give up, and just stick
-             * with DATAFILE_DIR.
+             * with DATA_DIR.
              */
             g_free(curdir);
             return g_strdup_printf("getcwd failed: %s\n",
@@ -685,7 +701,7 @@ init_progfile_dir(const char *arg0
                     g_free(cmake_file);
                 }
 #ifdef __APPLE__
-                if (!running_in_build_directory_flag) {
+                {
                     /*
                      * Scan up the path looking for a component
                      * named "Contents".  If we find it, we assume
@@ -765,10 +781,12 @@ get_progfile_dir(void)
  * On Windows, we use the directory in which the executable for this
  * process resides.
  *
- * On UN*X, we use the DATAFILE_DIR value supplied by the configure
- * script, unless we think we're being run from the build directory,
- * in which case we use the directory in which the executable for this
- * process resides.
+ * On macOS (when executed from an app bundle), use a directory within
+ * that app bundle.
+ *
+ * Otherwise, if the program was executed from the build directory, use the
+ * directory in which the executable for this process resides. In all other
+ * cases, use the DATA_DIR value that was set at compile time.
  *
  * XXX - if we ever make libwireshark a real library, used by multiple
  * applications (more than just TShark and versions of Wireshark with
@@ -794,8 +812,6 @@ get_progfile_dir(void)
 const char *
 get_datafile_dir(void)
 {
-    static const char *datafile_dir = NULL;
-
     if (datafile_dir != NULL)
         return datafile_dir;
 
@@ -815,17 +831,40 @@ get_datafile_dir(void)
         /*
          * Yes, we do; use that.
          */
-        datafile_dir = progfile_dir;
+        datafile_dir = g_strdup(progfile_dir);
     } else {
         /*
          * No, we don't.
          * Fall back on the default installation directory.
          */
-        datafile_dir = "C:\\Program Files\\Wireshark\\";
+        datafile_dir = g_strdup("C:\\Program Files\\Wireshark\\");
     }
 #else
 
-    if (running_in_build_directory_flag) {
+    if (g_getenv("WIRESHARK_DATA_DIR") && !started_with_special_privs()) {
+        /*
+         * The user specified a different directory for data files
+         * and we aren't running with special privileges.
+         * XXX - We might be able to dispense with the priv check
+         */
+        datafile_dir = g_strdup(g_getenv("WIRESHARK_DATA_DIR"));
+    }
+#ifdef __APPLE__
+    /*
+     * If we're running from an app bundle and weren't started
+     * with special privileges, use the Contents/Resources/share/wireshark
+     * subdirectory of the app bundle.
+     *
+     * (appbundle_dir is not set to a non-null value if we're
+     * started with special privileges, so we need only check
+     * it; we don't need to call started_with_special_privs().)
+     */
+    else if (appbundle_dir != NULL) {
+        datafile_dir = g_strdup_printf("%s/Contents/Resources/share/wireshark",
+                                       appbundle_dir);
+    }
+#endif
+    else if (running_in_build_directory_flag && progfile_dir != NULL) {
         /*
          * We're (probably) being run from the build directory and
          * weren't started with special privileges.
@@ -835,37 +874,12 @@ get_datafile_dir(void)
          * only check it; we don't need to call started_with_special_privs().)
          *
          * Data files (console.lua, radius/, etc.) are copied to the build
-         * directory during the build.
+         * directory during the build which also contains executables. A special
+         * exception is macOS (when built with an app bundle).
          */
-        datafile_dir = BUILD_TIME_DATAFILE_DIR;
-        return datafile_dir;
+        datafile_dir = g_strdup(progfile_dir);
     } else {
-        if (g_getenv("WIRESHARK_DATA_DIR") && !started_with_special_privs()) {
-            /*
-             * The user specified a different directory for data files
-             * and we aren't running with special privileges.
-             * XXX - We might be able to dispense with the priv check
-             */
-            datafile_dir = g_strdup(g_getenv("WIRESHARK_DATA_DIR"));
-        }
-#ifdef __APPLE__
-        /*
-         * If we're running from an app bundle and weren't started
-         * with special privileges, use the Contents/Resources/share/wireshark
-         * subdirectory of the app bundle.
-         *
-         * (appbundle_dir is not set to a non-null value if we're
-         * started with special privileges, so we need only check
-         * it; we don't need to call started_with_special_privs().)
-         */
-        else if (appbundle_dir != NULL) {
-            datafile_dir = g_strdup_printf("%s/Contents/Resources/share/wireshark",
-                                           appbundle_dir);
-        }
-#endif
-        else {
-            datafile_dir = DATAFILE_DIR;
-        }
+        datafile_dir = g_strdup(DATA_DIR);
     }
 
 #endif
@@ -1003,7 +1017,7 @@ get_plugins_dir_with_version(void)
     if (!plugin_dir)
         init_plugin_dir();
     if (plugin_dir && !plugin_dir_with_version)
-        plugin_dir_with_version = g_build_filename(plugin_dir, VERSION_RELEASE, (gchar *)NULL);
+        plugin_dir_with_version = g_build_filename(plugin_dir, PLUGIN_PATH_ID, (gchar *)NULL);
     return plugin_dir_with_version;
 }
 
@@ -1022,53 +1036,52 @@ get_plugins_pers_dir_with_version(void)
     if (!plugin_pers_dir)
         init_plugin_pers_dir();
     if (plugin_pers_dir && !plugin_pers_dir_with_version)
-        plugin_pers_dir_with_version = g_build_filename(plugin_pers_dir, VERSION_RELEASE, (gchar *)NULL);
+        plugin_pers_dir_with_version = g_build_filename(plugin_pers_dir, PLUGIN_PATH_ID, (gchar *)NULL);
     return plugin_pers_dir_with_version;
 }
 
 /*
  * Find the directory where the extcap hooks are stored.
  *
+ * If the WIRESHARK_EXTCAP_DIR environment variable is set and we are not
+ * running with special privileges, use that. Otherwise:
+ *
  * On Windows, we use the "extcap" subdirectory of the datafile directory.
  *
- * On UN*X, we use the EXTCAP_DIR value supplied by the configure
- * script, unless we think we're being run from the build directory,
- * in which case we use the "extcap" subdirectory of the datafile directory.
+ * On UN*X:
  *
- * In both cases, we then use the subdirectory of that directory whose
- * name is the version number.
+ *    if we appear to be run from the build directory, we use the
+ *    "extcap" subdirectory of the build directory.
  *
- * XXX - if we think we're being run from the build directory, perhaps we
- * should have the extcap code not look in the version subdirectory
- * of the extcap directory, but look in all of the subdirectories
- * of the extcap directory, so it can just fetch the extcap hooks built
- * as part of the build process.
+ *    otherwise, if we're running from an app bundle in macOS, we
+ *    use the Contents/MacOS/extcap subdirectory of the app bundle;
+ *
+ *    otherwise, we use the EXTCAP_DIR value supplied by CMake.
  */
 static char *extcap_dir = NULL;
 
 static void init_extcap_dir(void) {
-#ifdef _WIN32
-    const char *alt_extcap_path;
-
-    /*
-     * On Windows, the data file directory is the installation
-     * directory; the extcap hooks are stored under it.
-     *
-     * Assume we're running the installed version of Wireshark;
-     * on Windows, the data file directory is the directory
-     * in which the Wireshark binary resides.
-     */
-    alt_extcap_path = g_getenv("WIRESHARK_EXTCAP_DIR");
-    if (alt_extcap_path) {
+    if (g_getenv("WIRESHARK_EXTCAP_DIR") && !started_with_special_privs()) {
         /*
-         * The user specified a different directory for extcap hooks.
+         * The user specified a different directory for extcap hooks
+         * and we aren't running with special privileges.
          */
-        extcap_dir = g_strdup(alt_extcap_path);
-    } else {
+        extcap_dir = g_strdup(g_getenv("WIRESHARK_EXTCAP_DIR"));
+    }
+#ifdef _WIN32
+    else {
+        /*
+         * On Windows, the data file directory is the installation
+         * directory; the extcap hooks are stored under it.
+         *
+         * Assume we're running the installed version of Wireshark;
+         * on Windows, the data file directory is the directory
+         * in which the Wireshark binary resides.
+         */
         extcap_dir = g_build_filename(get_datafile_dir(), "extcap", (gchar *)NULL);
     }
 #else
-    if (running_in_build_directory_flag) {
+    else if (running_in_build_directory_flag) {
         /*
          * We're (probably) being run from the build directory and
          * weren't started with special privileges, so we'll use
@@ -1076,15 +1089,9 @@ static void init_extcap_dir(void) {
          * we're running is (that's the build directory).
          */
         extcap_dir = g_build_filename(get_progfile_dir(), "extcap", (gchar *)NULL);
-    } else {
-        if (g_getenv("WIRESHARK_EXTCAP_DIR") && !started_with_special_privs()) {
-            /*
-             * The user specified a different directory for extcap hooks
-             * and we aren't running with special privileges.
-             */
-            extcap_dir = g_strdup(g_getenv("WIRESHARK_EXTCAP_DIR"));
-        }
+    }
 #ifdef __APPLE__
+    else if (appbundle_dir != NULL) {
         /*
          * If we're running from an app bundle and weren't started
          * with special privileges, use the Contents/MacOS/extcap
@@ -1094,13 +1101,11 @@ static void init_extcap_dir(void) {
          * started with special privileges, so we need only check
          * it; we don't need to call started_with_special_privs().)
          */
-        else if (appbundle_dir != NULL) {
-            extcap_dir = g_build_filename(appbundle_dir, "Contents/MacOS/extcap", (gchar *)NULL);
-        }
+        extcap_dir = g_build_filename(appbundle_dir, "Contents/MacOS/extcap", (gchar *)NULL);
+    }
 #endif
-        else {
-            extcap_dir = g_strdup(EXTCAP_DIR);
-        }
+    else {
+        extcap_dir = g_strdup(EXTCAP_DIR);
     }
 #endif
 }
@@ -1419,40 +1424,50 @@ get_persconffile_dir(const gchar *profilename)
     return persconffile_profile_dir;
 }
 
-gboolean
-profile_exists(const gchar *profilename, gboolean global)
+char *
+get_profile_dir(const char *profilename, gboolean is_global)
 {
-    gchar *path = NULL, *global_path;
+    gchar *profile_dir;
 
-    if (global) {
-        /*
-         * If we're looking up a global profile, we must have a
-         * profile name.
-         */
-        if (!profilename)
-            return FALSE;
-        global_path = get_global_profiles_dir();
-        path = g_strdup_printf ("%s%s%s", global_path,
-                           G_DIR_SEPARATOR_S, profilename);
-        g_free(global_path);
-        if (test_for_directory (path) == EISDIR) {
-            g_free (path);
-            return TRUE;
+    if (is_global) {
+        if (profilename && strlen(profilename) > 0 &&
+            strcmp(profilename, DEFAULT_PROFILE) != 0)
+        {
+            gchar *global_path = get_global_profiles_dir();
+            profile_dir = g_build_filename(global_path, profilename, NULL);
+            g_free(global_path);
+        } else {
+            profile_dir = g_strdup(get_datafile_dir());
         }
     } else {
         /*
          * If we didn't supply a profile name, i.e. if profilename is
          * null, get_persconffile_dir() returns the default profile.
          */
-        path = get_persconffile_dir (profilename);
-        if (test_for_directory (path) == EISDIR) {
-            g_free (path);
-            return TRUE;
-        }
+        profile_dir = get_persconffile_dir(profilename);
     }
 
-    g_free (path);
-    return FALSE;
+    return profile_dir;
+}
+
+gboolean
+profile_exists(const gchar *profilename, gboolean global)
+{
+    gchar *path = NULL;
+    gboolean exists;
+
+    /*
+     * If we're looking up a global profile, we must have a
+     * profile name.
+     */
+    if (global && !profilename)
+        return FALSE;
+
+    path = get_profile_dir(profilename, global);
+    exists = (test_for_directory(path) == EISDIR) ? TRUE : FALSE;
+
+    g_free(path);
+    return exists;
 }
 
 static int
@@ -1673,20 +1688,10 @@ copy_persconffile_profile(const char *toname, const char *fromname, gboolean fro
 {
     gchar *from_dir;
     gchar *to_dir = get_persconffile_dir(toname);
-    gchar *filename, *from_file, *to_file, *global_path;
+    gchar *filename, *from_file, *to_file;
     GList *files, *file;
 
-    if (from_global) {
-        if (strcmp(fromname, DEFAULT_PROFILE) == 0) {
-            from_dir = get_global_profiles_dir();
-        } else {
-            global_path = get_global_profiles_dir();
-            from_dir = g_strdup_printf ("%s%s%s", global_path, G_DIR_SEPARATOR_S, fromname);
-            g_free(global_path);
-        }
-    } else {
-        from_dir = get_persconffile_dir(fromname);
-    }
+    from_dir = get_profile_dir(fromname, from_global);
 
     files = g_hash_table_get_keys(profile_files);
     file = g_list_first(files);
@@ -2017,28 +2022,41 @@ file_exists(const char *fname)
         return FALSE;
     }
 
-#if defined(_MSC_VER) && _MSC_VER < 1900
-
-    /*
-     * This is a bit tricky on win32. The st_ino field is documented as:
-     * "The inode, and therefore st_ino, has no meaning in the FAT, ..."
-     * but it *is* set to zero if stat() returns without an error,
-     * so this is working, but maybe not quite the way expected. ULFL
-     */
-    file_stat.st_ino = 1;   /* this will make things work if an error occurred */
-    ws_stat64(fname, &file_stat);
-    if (file_stat.st_ino == 0) {
-        return TRUE;
-    } else {
-        return FALSE;
-    }
-#else
     if (ws_stat64(fname, &file_stat) != 0 && errno == ENOENT) {
         return FALSE;
     } else {
         return TRUE;
     }
-#endif
+}
+
+gboolean config_file_exists_with_entries(const char *fname, char comment_char)
+{
+    gboolean start_of_line = TRUE;
+    gboolean has_entries = FALSE;
+    FILE *file;
+    int c;
+
+    if (!fname) {
+        return FALSE;
+    }
+
+    if ((file = ws_fopen(fname, "r")) == NULL) {
+        return FALSE;
+    }
+
+    do {
+        c = ws_getc_unlocked(file);
+        if (start_of_line && c != comment_char && !g_ascii_isspace(c) && g_ascii_isprint(c)) {
+            has_entries = TRUE;
+            break;
+        }
+        if (c == '\n' || !g_ascii_isspace(c)) {
+            start_of_line = (c == '\n');
+        }
+    } while (c != EOF);
+
+    fclose(file);
+    return has_entries;
 }
 
 /*
@@ -2197,6 +2215,8 @@ free_progdirs(void)
 {
     g_free(persconffile_dir);
     persconffile_dir = NULL;
+    g_free(datafile_dir);
+    datafile_dir = NULL;
     g_free(persdatafile_dir);
     persdatafile_dir = NULL;
     g_free(persconfprofile);

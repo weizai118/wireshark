@@ -130,6 +130,11 @@ ManageInterfacesDialog::ManageInterfacesDialog(QWidget *parent) :
     loadGeometry();
     setAttribute(Qt::WA_DeleteOnClose, true);
 
+    ui->addPipe->setStockIcon("list-add");
+    ui->delPipe->setStockIcon("list-remove");
+    ui->addRemote->setStockIcon("list-add");
+    ui->delRemote->setStockIcon("list-remove");
+
 #ifdef Q_OS_MAC
     ui->addPipe->setAttribute(Qt::WA_MacSmallSize, true);
     ui->delPipe->setAttribute(Qt::WA_MacSmallSize, true);
@@ -142,11 +147,9 @@ ManageInterfacesDialog::ManageInterfacesDialog(QWidget *parent) :
     proxyModel = new InterfaceSortFilterModel(this);
     QList<InterfaceTreeColumns> columns;
     columns.append(IFTREE_COL_HIDDEN);
-    columns.append(IFTREE_COL_INTERFACE_NAME);
-#ifdef Q_OS_WIN
+    columns.append(IFTREE_COL_DESCRIPTION);
     columns.append(IFTREE_COL_NAME);
-#endif
-    columns.append(IFTREE_COL_INTERFACE_COMMENT);
+    columns.append(IFTREE_COL_COMMENT);
     proxyModel->setColumns(columns);
     proxyModel->setSourceModel(sourceModel);
     proxyModel->setFilterHidden(false);
@@ -154,7 +157,7 @@ ManageInterfacesDialog::ManageInterfacesDialog(QWidget *parent) :
 
     ui->localView->setModel(proxyModel);
     ui->localView->resizeColumnToContents(proxyModel->mapSourceToColumn(IFTREE_COL_HIDDEN));
-    ui->localView->resizeColumnToContents(proxyModel->mapSourceToColumn(IFTREE_COL_INTERFACE_NAME));
+    ui->localView->resizeColumnToContents(proxyModel->mapSourceToColumn(IFTREE_COL_NAME));
 
     pipeProxyModel = new InterfaceSortFilterModel(this);
     columns.clear();

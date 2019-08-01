@@ -100,7 +100,7 @@ typedef enum {
 #define SIZE_ADD_HIGH \
 { size_stat = (size_stat==SIZE_HAVE_LOW ? SIZE_HAVE_ALL : SIZE_HAVE_HIGH); }
 
-/* PCAP DVB-CI pseudo-header, see http://www.kaiser.cx/pcap-dvbci.html */
+/* PCAP DVB-CI pseudo-header, see https://www.kaiser.cx/pcap-dvbci.html */
 #define DVB_CI_PSEUDO_HDR_VER 0
 #define DVB_CI_PSEUDO_HDR_LEN 4
 #define DVB_CI_PSEUDO_HDR_CAM_TO_HOST 0xFF
@@ -385,12 +385,13 @@ camins_read_packet(FILE_T fh, wtap_rec *rec, Buffer *buf,
 
 
 static gboolean
-camins_read(wtap *wth, int *err, gchar **err_info, gint64 *data_offset)
+camins_read(wtap *wth, wtap_rec *rec, Buffer *buf, int *err,
+    gchar **err_info, gint64 *data_offset)
 {
     *data_offset = file_tell(wth->fh);
 
-    return camins_read_packet(wth->fh, &wth->rec, wth->rec_data,
-        (guint64 *)(wth->priv), err, err_info);
+    return camins_read_packet(wth->fh, rec, buf, (guint64 *)(wth->priv),
+                              err, err_info);
 }
 
 
@@ -432,7 +433,7 @@ wtap_open_return_val camins_open(wtap *wth, int *err, gchar **err_info _U_)
 
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 4

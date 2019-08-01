@@ -24,8 +24,6 @@ namespace Ui {
 class RtpPlayerDialog;
 }
 
-struct _rtp_stream_info;
-
 class QCPItemStraightLine;
 class QDialogButtonBox;
 class QMenu;
@@ -60,9 +58,9 @@ public:
      * Requires src_addr, src_port, dest_addr, dest_port, ssrc, packet_count,
      * setup_frame_number, and start_rel_time.
      *
-     * @param rtp_stream struct with rtp_stream info
+     * @param rtpstream struct with rtpstream info
      */
-    void addRtpStream(struct _rtp_stream_info *rtp_stream);
+    void addRtpStream(rtpstream_info_t *rtpstream);
 
 public slots:
 
@@ -115,12 +113,12 @@ private:
     QCPItemStraightLine *cur_play_pos_;
     QString playback_error_;
 
-//    const QString streamKey(const struct _rtp_stream_info *rtp_stream);
+//    const QString streamKey(const rtpstream_info_t *rtpstream);
 //    const QString streamKey(const packet_info *pinfo, const struct _rtp_info *rtpinfo);
 
     // Tap callbacks
 //    static void tapReset(void *tapinfo_ptr);
-    static gboolean tapPacket(void *tapinfo_ptr, packet_info *pinfo, epan_dissect_t *, const void *rtpinfo_ptr);
+    static tap_packet_status tapPacket(void *tapinfo_ptr, packet_info *pinfo, epan_dissect_t *, const void *rtpinfo_ptr);
     static void tapDraw(void *tapinfo_ptr);
 
     void addPacket(packet_info *pinfo, const struct _rtp_info *rtpinfo);

@@ -83,9 +83,12 @@ void WiresharkDialog::setWindowTitleFromSubtitle()
 // we were deep in the bowels of a routine that retaps packets. Track our
 // tapping state using retap_depth_ and our closed state using dialog_closed_.
 //
-// The Delta Object Rules (http://delta.affinix.com/dor/) page on nested
-// event loops effectively says "don't do that." However, we don't really
-// have a choice if we want to have a usable application that retaps packets.
+// The Delta Object Rules page on nested event loops:
+//
+//    https://jblog.andbit.net/2007/04/28/delta-object-rules/
+//
+// effectively says "don't do that." However, we don't really have a choice
+// if we want to have a usable application that retaps packets.
 
 void WiresharkDialog::tryDeleteLater()
 {
@@ -100,10 +103,10 @@ void WiresharkDialog::updateWidgets()
     setWindowTitleFromSubtitle();
 }
 
-bool WiresharkDialog::registerTapListener(const char *tap_name, void *tap_data, const char *filter, guint flags, void(*tap_reset)(void *), gboolean(*tap_packet)(void *, struct _packet_info *, struct epan_dissect *, const void *), void(*tap_draw)(void *))
+bool WiresharkDialog::registerTapListener(const char *tap_name, void *tap_data, const char *filter, guint flags, void (*tap_reset)(void *), tap_packet_status (*tap_packet)(void *, struct _packet_info *, struct epan_dissect *, const void *), void (*tap_draw)(void *))
 {
     GString *error_string = register_tap_listener(tap_name, tap_data, filter, flags,
-                                                  tap_reset, tap_packet, tap_draw);
+                                                  tap_reset, tap_packet, tap_draw, NULL);
     if (error_string) {
         QMessageBox::warning(this, tr("Failed to attach to tap \"%1\"").arg(tap_name),
                              error_string->str);

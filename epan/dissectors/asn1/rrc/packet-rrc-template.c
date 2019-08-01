@@ -10,7 +10,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Ref: 3GPP TS 25.331 V15.2.0 (2018-03)
+ * Ref: 3GPP TS 25.331 V15.4.0 (2018-09)
  */
 
 /**
@@ -82,14 +82,10 @@ typedef struct umts_rrc_private_data_t
 /* Helper function to get or create a struct that will be actx->private_data */
 static umts_rrc_private_data_t* umts_rrc_get_private_data(asn1_ctx_t *actx)
 {
-  if (actx->private_data != NULL) {
-    return (umts_rrc_private_data_t*)actx->private_data;
+  if (actx->private_data == NULL) {
+    actx->private_data = wmem_new0(wmem_packet_scope(), umts_rrc_private_data_t);
   }
-  else {
-    umts_rrc_private_data_t* new_struct = wmem_new0(wmem_packet_scope(), umts_rrc_private_data_t);
-    actx->private_data = new_struct;
-    return new_struct;
-  }
+  return (umts_rrc_private_data_t*)actx->private_data;
 }
 
 static guint32 private_data_get_s_rnc_id(asn1_ctx_t *actx)
@@ -280,8 +276,6 @@ static gint ett_rrc_eutraFeatureGroupIndicators = -1;
 static gint ett_rrc_cn_CommonGSM_MAP_NAS_SysInfo = -1;
 static gint ett_rrc_ims_info = -1;
 static gint ett_rrc_cellIdentity = -1;
-static gint ett_rrc_cipheringAlgorithmCap = -1;
-static gint ett_rrc_integrityProtectionAlgorithmCap = -1;
 
 static expert_field ei_rrc_no_hrnti = EI_INIT;
 
@@ -555,8 +549,6 @@ void proto_register_rrc(void) {
     &ett_rrc_cn_CommonGSM_MAP_NAS_SysInfo,
     &ett_rrc_ims_info,
     &ett_rrc_cellIdentity,
-    &ett_rrc_cipheringAlgorithmCap,
-    &ett_rrc_integrityProtectionAlgorithmCap,
   };
 
   static ei_register_info ei[] = {

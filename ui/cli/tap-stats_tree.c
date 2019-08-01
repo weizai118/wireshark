@@ -84,7 +84,8 @@ init_stats_tree(const char *opt_arg, void *userdata _U_)
 					     st->cfg->flags,
 					     stats_tree_reset,
 					     stats_tree_packet,
-					     draw_stats_tree);
+					     draw_stats_tree,
+					     NULL);
 
 	if (error_string) {
 		report_failure("stats_tree for: %s failed to attach to the tap: %s", cfg->name, error_string->str);
@@ -129,7 +130,7 @@ register_tap_listener_stats_tree_stat(void)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

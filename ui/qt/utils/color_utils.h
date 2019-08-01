@@ -45,6 +45,16 @@ public:
     static QRgb graphColor(int item);
     static QRgb sequenceColor(int item);
 
+    /** Checks if our application is in "dark mode".
+     * Dark mode is determined by comparing the application palette's window
+     * text color with the window color.
+     *
+     * @return true if we're running in dark mode, false otherwise.
+     */
+    static bool themeIsDark();
+    static QBrush themeLinkBrush();
+    static QString themeLinkStyle();
+
 signals:
 
 public slots:

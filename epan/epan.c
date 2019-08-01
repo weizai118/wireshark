@@ -12,7 +12,6 @@
 #include <stdarg.h>
 
 #include <wsutil/wsgcrypt.h>
-#include <wsutil/ws_printf.h> /* ws_g_warning */
 
 #ifdef HAVE_LIBGNUTLS
 #include <gnutls/gnutls.h>
@@ -56,6 +55,8 @@
 #include "reassemble.h"
 #include "srt_table.h"
 #include "stats_tree.h"
+#include "secrets.h"
+#include "funnel.h"
 #include <dtd.h>
 
 #ifdef HAVE_PLUGINS
@@ -79,6 +80,10 @@
 #include <nghttp2/nghttp2ver.h>
 #endif
 
+#ifdef HAVE_BROTLI
+#include <brotli/decode.h>
+#endif
+
 #ifdef HAVE_LIBXML2
 #include <libxml/xmlversion.h>
 #include <libxml/parser.h>
@@ -88,8 +93,8 @@
 #include <signal.h>
 #endif
 
-static GSList *epan_register_all_procotols = NULL;
-static GSList *epan_register_all_handoffs = NULL;
+static GSList *epan_plugin_register_all_procotols = NULL;
+static GSList *epan_plugin_register_all_handoffs = NULL;
 
 static wmem_allocator_t *pinfo_pool_cache = NULL;
 
@@ -169,17 +174,21 @@ void epan_register_plugin(const epan_plugin *plug)
 {
 	epan_plugins = g_slist_prepend(epan_plugins, (epan_plugin *)plug);
 	if (plug->register_all_protocols)
-		epan_register_all_procotols = g_slist_prepend(epan_register_all_procotols, plug->register_all_protocols);
+		epan_plugin_register_all_procotols = g_slist_prepend(epan_plugin_register_all_procotols, plug->register_all_protocols);
 	if (plug->register_all_handoffs)
-		epan_register_all_handoffs = g_slist_prepend(epan_register_all_handoffs, plug->register_all_handoffs);
+		epan_plugin_register_all_handoffs = g_slist_prepend(epan_plugin_register_all_handoffs, plug->register_all_handoffs);
+}
+
+void epan_plugin_register_all_tap_listeners(gpointer data, gpointer user_data _U_)
+{
+	epan_plugin *plug = (epan_plugin *)data;
+	if (plug->register_all_tap_listeners)
+		plug->register_all_tap_listeners();
 }
 #endif
 
 gboolean
-epan_init(void (*register_all_protocols_func)(register_cb cb, gpointer client_data),
-	  void (*register_all_handoffs_func)(register_cb cb, gpointer client_data),
-	  register_cb cb,
-	  gpointer client_data)
+epan_init(register_cb cb, gpointer client_data, gboolean load_plugins)
 {
 	volatile gboolean status = TRUE;
 
@@ -201,9 +210,11 @@ epan_init(void (*register_all_protocols_func)(register_cb cb, gpointer client_da
 
 	except_init();
 
+	if (load_plugins) {
 #ifdef HAVE_PLUGINS
-	libwireshark_plugins = plugins_init(WS_PLUGIN_EPAN);
+		libwireshark_plugins = plugins_init(WS_PLUGIN_EPAN);
 #endif
+	}
 
 	/* initialize libgcrypt (beware, it won't be thread-safe) */
 	gcry_check_version(NULL);
@@ -230,15 +241,17 @@ epan_init(void (*register_all_protocols_func)(register_cb cb, gpointer client_da
 		prefs_init();
 		expert_init();
 		packet_init();
+		secrets_init();
 		conversation_init();
 		capture_dissector_init();
 		reassembly_tables_init();
 #ifdef HAVE_PLUGINS
 		g_slist_foreach(epan_plugins, epan_plugin_init, NULL);
 #endif
-		epan_register_all_procotols = g_slist_prepend(epan_register_all_procotols, register_all_protocols_func);
-		epan_register_all_handoffs = g_slist_prepend(epan_register_all_handoffs, register_all_handoffs_func);
-		proto_init(epan_register_all_procotols, epan_register_all_handoffs, cb, client_data);
+		proto_init(epan_plugin_register_all_procotols, epan_plugin_register_all_handoffs, cb, client_data);
+#ifdef HAVE_PLUGINS
+		g_slist_foreach(epan_plugins, epan_plugin_register_all_tap_listeners, NULL);
+#endif
 		packet_cache_proto_handles();
 		dfilter_init();
 		final_registration_all_protocols();
@@ -301,13 +314,24 @@ epan_cleanup(void)
 	g_slist_free(epan_plugins);
 	epan_plugins = NULL;
 #endif
-	g_slist_free(epan_register_all_procotols);
-	epan_register_all_procotols = NULL;
-	g_slist_free(epan_register_all_handoffs);
-	epan_register_all_handoffs = NULL;
+	g_slist_free(epan_plugin_register_all_procotols);
+	epan_plugin_register_all_procotols = NULL;
+	g_slist_free(epan_plugin_register_all_handoffs);
+	epan_plugin_register_all_handoffs = NULL;
 
 	dfilter_cleanup();
 	decode_clear_all();
+
+#ifdef HAVE_LUA
+	/*
+	 * Must deregister Proto objects in Lua before destroying dissector
+	 * tables in packet_cleanup(). Doing so will also deregister and free
+	 * preferences, this must happen before prefs_cleanup(). That will
+	 * update the list of deregistered fields which must be followed by
+	 * proto_cleanup() to complete deallocation.
+	 */
+	wslua_early_cleanup();
+#endif
 
 	/*
 	 * Note: packet_cleanup() will call registered shutdown routines which
@@ -320,6 +344,7 @@ epan_cleanup(void)
 	prefs_cleanup();
 	proto_cleanup();
 
+	secrets_cleanup();
 	conversation_filters_cleanup();
 	reassembly_table_cleanup();
 	tap_cleanup();
@@ -328,6 +353,7 @@ epan_cleanup(void)
 	export_pdu_cleanup();
 	cleanup_enabled_and_disabled_lists();
 	stats_tree_cleanup();
+	funnel_cleanup();
 	dtd_location(NULL);
 #ifdef HAVE_LUA
 	wslua_cleanup();
@@ -406,11 +432,11 @@ epan_get_frame_ts(const epan_t *session, guint32 frame_num)
 {
 	const nstime_t *abs_ts = NULL;
 
-	if (session->funcs.get_frame_ts)
+	if (session && session->funcs.get_frame_ts)
 		abs_ts = session->funcs.get_frame_ts(session->prov, frame_num);
 
 	if (!abs_ts)
-		ws_g_warning("!!! couldn't get frame ts for %u !!!\n", frame_num);
+		g_warning("!!! couldn't get frame ts for %u !!!\n", frame_num);
 
 	return abs_ts;
 }
@@ -716,6 +742,9 @@ epan_get_compiled_version_info(GString *str)
 	g_string_append(str, ", ");
 #ifdef HAVE_LIBGNUTLS
 	g_string_append(str, "with GnuTLS " LIBGNUTLS_VERSION);
+#ifdef HAVE_GNUTLS_PKCS11
+	g_string_append(str, " and PKCS #11 support");
+#endif /* HAVE_GNUTLS_PKCS11 */
 #else
 	g_string_append(str, "without GnuTLS");
 #endif /* HAVE_LIBGNUTLS */
@@ -753,6 +782,14 @@ epan_get_compiled_version_info(GString *str)
 #else
 	g_string_append(str, "without nghttp2");
 #endif /* HAVE_NGHTTP2 */
+
+	/* brotli */
+	g_string_append(str, ", ");
+#ifdef HAVE_BROTLI
+	g_string_append(str, "with brotli");
+#else
+	g_string_append(str, "without brotli");
+#endif /* HAVE_BROTLI */
 
 	/* LZ4 */
 	g_string_append(str, ", ");
@@ -793,10 +830,16 @@ epan_get_runtime_version_info(GString *str)
 
 	/* Gcrypt */
 	g_string_append_printf(str, ", with Gcrypt %s", gcry_check_version(NULL));
+
+	/* brotli */
+#ifdef HAVE_BROTLI
+	g_string_append_printf(str, ", with brotli %d.%d.%d", BrotliDecoderVersion() >> 24,
+		(BrotliDecoderVersion() >> 12) & 0xFFF, BrotliDecoderVersion() & 0xFFF);
+#endif
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

@@ -23,9 +23,23 @@ typedef struct {
   gboolean association_has_mobility_domain_element;
   gboolean has_ft_akm_suite;
   gboolean has_non_ft_akm_suite;
+  gboolean has_fils_session;
+  guint32 last_akm_suite;
+  guint16 owe_group;
   proto_node *rsn_first_ft_akm_suite;
   proto_node *rsn_first_non_ft_akm_suite;
+  guint8 ampe_frame;
 } association_sanity_check_t;
+
+typedef struct {
+  guint32 last_akm_suite;
+  guint16 owe_group;
+} ieee80211_conversation_data_t;
+
+typedef struct {
+  guint32 last_akm_suite;
+  guint16 owe_group;
+} ieee80211_packet_data_t;
 
 typedef struct ieee80211_tagged_field_data
 {
@@ -228,6 +242,7 @@ gboolean is_broadcast_bssid(const address *bssid);
  * COMPOSE_FRAME_TYPE() values for extension frames.
  */
 #define EXTENSION_DMG_BEACON         0x30  /* Extension DMG beacon */
+#define EXTENSION_S1G_BEACON         0x31  /* Extension S1G beacon */
 
 typedef struct _wlan_stats {
   guint8 channel;
@@ -259,6 +274,7 @@ typedef struct {
 #define ANV_PROTO_ID_MIH_IS    1
 #define ADV_PROTO_ID_MIH_CESCD 2
 #define ADV_PROTO_ID_EAS       3
+#define ADV_PROTO_ID_RLQP       4
 #define ADV_PROTO_ID_VS        221
 
 typedef struct anqp_info_dissector_data {
@@ -276,6 +292,7 @@ typedef struct anqp_info_dissector_data {
 #define WFA_SUBTYPE_OSEN                       18
 #define WFA_SUBTYPE_DPP                        26
 #define WFA_SUBTYPE_IEEE1905_MULTI_AP          27 /* ox1B */
+#define WFA_SUBTYPE_OWE_TRANSITION_MODE        28
 
 /*
  * Editor modelines

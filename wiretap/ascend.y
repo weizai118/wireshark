@@ -382,8 +382,8 @@ wdd_hdr: WDD_CHUNK hexnum KEYWORD KEYWORD hexnum KEYWORD decnum decnum decnum KE
 ;
 
 byte: HEXBYTE {
-  /* remember the position of the data group in the trace, to tip
-     off ascend_seek() as to where to look for the next header. */
+  /* remember the position of the data group in the trace, to tip off
+     ascend_find_next_packet() as to where to look for the next header. */
   if (parser_state->first_hexbyte == 0)
     parser_state->first_hexbyte = file_tell(fh);
 
@@ -485,6 +485,8 @@ run_ascend_parser(FILE_T fh, wtap_rec *rec, guint8 *pd,
   parser_state->pseudo_header->call_num[0] = '\0';
 
   status = yyparse(scanner, parser_state, fh);
+  ascendlex_destroy(scanner);
+
   *err = parser_state->err;
   *err_info = parser_state->err_info;
   return status;

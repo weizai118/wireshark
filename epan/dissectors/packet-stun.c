@@ -23,10 +23,10 @@
  * - RFC 6544
  *
  * From MS (Lync)
- * MS-TURN: Traversal Using Relay NAT (TURN) Extensions http://msdn.microsoft.com/en-us/library/cc431507.aspx
- * MS-ICE2BWN: Interactive Connectivity Establishment (ICE) 2.0 Bandwidth Management Extensions http://msdn.microsoft.com/en-us/library/ff595756.aspx
- * MS-TURNBWM:  Traversal using Relay NAT (TURN) Bandwidth Management Extensions http://msdn.microsoft.com/en-us/library/ff595670.aspx
- * MS-ICE2:  Interactive Connectivity Establishment ICE Extensions 2.0 http://msdn.microsoft.com/en-us/library/office/cc431504.aspx
+ * MS-TURN: Traversal Using Relay NAT (TURN) Extensions https://docs.microsoft.com/en-us/openspecs/office_protocols/ms-turn
+ * MS-ICE2BWN: Interactive Connectivity Establishment (ICE) 2.0 Bandwidth Management Extensions https://docs.microsoft.com/en-us/openspecs/office_protocols/ms-ice2bwm
+ * MS-TURNBWM:  Traversal using Relay NAT (TURN) Bandwidth Management Extensions https://docs.microsoft.com/en-us/openspecs/office_protocols/ms-turnbwm
+ * MS-ICE2:  Interactive Connectivity Establishment ICE Extensions 2.0 https://docs.microsoft.com/en-us/openspecs/office_protocols/ms-ice2
  */
 
 #include "config.h"
@@ -377,7 +377,7 @@ static const value_string attributes_family[] = {
     {0x0002, "IPv6"},
     {0x00, NULL}
 };
-/* http://www.iana.org/assignments/stun-parameters/stun-parameters.xhtml#stun-parameters-6 (2015-06-12)*/
+/* https://www.iana.org/assignments/stun-parameters/stun-parameters.xhtml#stun-parameters-6 (2015-06-12)*/
 
 static const value_string error_code[] = {
     {274, "Disable Candidate"},               /* MS-ICE2BWN */
@@ -671,7 +671,7 @@ dissect_stun_message(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gboole
         conversation_add_proto_data(conversation, proto_stun, stun_info);
     }
 
-    if (!pinfo->fd->flags.visited) {
+    if (!pinfo->fd->visited) {
         if ((stun_trans = (stun_transaction_t *)
              wmem_tree_lookup32_array(stun_info->transaction_pdus,
                                       transaction_id_key)) == NULL) {
@@ -737,14 +737,14 @@ dissect_stun_message(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gboole
             it=proto_tree_add_uint(stun_tree, hf_stun_duplicate,
                                    tvb, offset, 0,
                                    stun_trans->req_frame);
-            PROTO_ITEM_SET_GENERATED(it);
+            proto_item_set_generated(it);
         }
         if (stun_trans->rep_frame) {
             proto_item *it;
             it=proto_tree_add_uint(stun_tree, hf_stun_response_in,
                                    tvb, offset, 0,
                                    stun_trans->rep_frame);
-            PROTO_ITEM_SET_GENERATED(it);
+            proto_item_set_generated(it);
         }
     }
     else {
@@ -754,7 +754,7 @@ dissect_stun_message(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gboole
             it=proto_tree_add_uint(stun_tree, hf_stun_duplicate,
                                    tvb, offset, 0,
                                    stun_trans->rep_frame);
-            PROTO_ITEM_SET_GENERATED(it);
+            proto_item_set_generated(it);
         }
         if (msg_type_class == RESPONSE || msg_type_class == ERROR_RESPONSE) {
             /* This is a response */
@@ -765,12 +765,12 @@ dissect_stun_message(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gboole
                 it=proto_tree_add_uint(stun_tree, hf_stun_response_to, tvb,
                                        offset, 0,
                                        stun_trans->req_frame);
-                PROTO_ITEM_SET_GENERATED(it);
+                proto_item_set_generated(it);
 
                 nstime_delta(&ns, &pinfo->abs_ts, &stun_trans->req_time);
                 it=proto_tree_add_time(stun_tree, hf_stun_time, tvb,
                                        offset, 0, &ns);
-                PROTO_ITEM_SET_GENERATED(it);
+                proto_item_set_generated(it);
             }
 
         }
@@ -1049,7 +1049,7 @@ dissect_stun_message(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gboole
                    Add host-order port into tree. */
                 clear_port = tvb_get_ntohs(tvb, offset+2) ^ (magic_cookie_first_word >> 16);
                 ti = proto_tree_add_uint(att_tree, hf_stun_att_port, tvb, offset+2, 2, clear_port);
-                PROTO_ITEM_SET_GENERATED(ti);
+                proto_item_set_generated(ti);
 
                 if (att_length < 8)
                     break;
@@ -1062,7 +1062,7 @@ dissect_stun_message(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gboole
                        Add in network order tree. */
                     clear_ip = tvb_get_ipv4(tvb, offset+4) ^ g_htonl(magic_cookie_first_word);
                     ti = proto_tree_add_ipv4(att_tree, hf_stun_att_ipv4, tvb, offset+4, 4, clear_ip);
-                    PROTO_ITEM_SET_GENERATED(ti);
+                    proto_item_set_generated(ti);
 
                     {
                         const gchar *ipstr;
@@ -1097,7 +1097,7 @@ dissect_stun_message(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gboole
                         IPv6[3] = IPv6[3] ^ g_htonl(transaction_id[2]);
                         ti = proto_tree_add_ipv6(att_tree, hf_stun_att_ipv6, tvb, offset+4, 16,
                                                  (const ws_in6_addr *)IPv6);
-                        PROTO_ITEM_SET_GENERATED(ti);
+                        proto_item_set_generated(ti);
                     }
 
                     break;
@@ -1669,11 +1669,11 @@ proto_register_stun(void)
             BASE_HEX, NULL, 0x7FFFFFFF, NULL, HFILL}
          },
         { &hf_stun_att_address_rp_masb,
-          { "Maximum Send Bandwidth", "stun.att.adress_rp.masb", FT_UINT32,
+          { "Maximum Send Bandwidth", "stun.att.address_rp.masb", FT_UINT32,
             BASE_DEC, NULL, 0x0, "In kilobits per second", HFILL}
          },
         { &hf_stun_att_address_rp_marb,
-          { "Maximum Receive Bandwidth", "stun.att.adress_rp.marb", FT_UINT32,
+          { "Maximum Receive Bandwidth", "stun.att.address_rp.marb", FT_UINT32,
             BASE_DEC, NULL, 0x0, "In kilobits per second", HFILL}
          },
         { &hf_stun_att_sip_dialog_id,
@@ -1735,8 +1735,8 @@ proto_reg_handoff_stun(void)
      * SSL/TLS and DTLS Application-Layer Protocol Negotiation (ALPN)
      * protocol ID.
      */
-    dissector_add_string("ssl.handshake.extensions_alpn_str", "stun.nat-discovery", stun_tcp_handle);
-    dissector_add_string("dtls.handshake.extensions_alpn_str", "stun.nat-discovery", stun_udp_handle);
+    dissector_add_string("tls.alpn", "stun.nat-discovery", stun_tcp_handle);
+    dissector_add_string("dtls.alpn", "stun.nat-discovery", stun_udp_handle);
 
     heur_dissector_add("udp", dissect_stun_heur, "STUN over UDP", "stun_udp", proto_stun, HEURISTIC_ENABLE);
 

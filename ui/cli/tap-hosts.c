@@ -21,6 +21,8 @@
 #include <epan/stat_tap_ui.h>
 #include <epan/addr_resolv.h>
 
+#include <ui/cmdarg_err.h>
+
 void register_tap_listener_hosts(void);
 
 static gboolean dump_v4 = FALSE;
@@ -61,7 +63,8 @@ hosts_draw(void *dummy _U_)
 
 	printf("# TShark hosts output\n");
 	printf("#\n");
-	printf("# Host data gathered from %s\n", cfile.filename);
+	printf("# Host data gathered from %s\n",
+	    cfile.is_tempfile ? "the temporary capture file" : cfile.filename);
 	printf("\n");
 
 	if (dump_v4) {
@@ -104,7 +107,7 @@ hosts_init(const char *opt_arg, void *userdata _U_)
 			} else if (strcmp("ipv6", tokens[opt_count]) == 0) {
 				dump_v6 = TRUE;
 			} else if (opt_count > 0) {
-				fprintf(stderr, "tshark: invalid \"-z " TAP_NAME "[,ipv4|ipv6]\" argument\n");
+				cmdarg_err("invalid \"-z " TAP_NAME "[,ipv4|ipv6]\" argument");
 				exit(1);
 			}
 			opt_count++;
@@ -113,10 +116,10 @@ hosts_init(const char *opt_arg, void *userdata _U_)
 	}
 
 	error_string = register_tap_listener("frame", NULL, NULL, TL_REQUIRES_PROTO_TREE,
-					   NULL, NULL, hosts_draw);
+					   NULL, NULL, hosts_draw, NULL);
 	if (error_string) {
 		/* error, we failed to attach to the tap. clean up */
-		fprintf(stderr, "tshark: Couldn't register " TAP_NAME " tap: %s\n",
+		cmdarg_err("Couldn't register " TAP_NAME " tap: %s",
 			error_string->str);
 		g_string_free(error_string, TRUE);
 		exit(1);
@@ -140,7 +143,7 @@ register_tap_listener_hosts(void)
 
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

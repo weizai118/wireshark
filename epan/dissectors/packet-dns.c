@@ -33,8 +33,10 @@
 #include <epan/afn.h>
 #include <epan/tap.h>
 #include <epan/stats_tree.h>
-#include "packet-ssl.h"
+#include <wsutil/utf8_entities.h>
+#include "packet-tls.h"
 #include "packet-dtls.h"
+#include "packet-http2.h"
 
 void proto_register_dns(void);
 void proto_reg_handoff_dns(void);
@@ -59,29 +61,29 @@ struct DnsTap {
 
 static int dns_tap = -1;
 
-static const guint8* st_str_packets = "Total Packets";
-static const guint8* st_str_packet_qr = "Query/Response";
-static const guint8* st_str_packet_qtypes = "Query Type";
-static const guint8* st_str_packet_qclasses = "Class";
-static const guint8* st_str_packet_rcodes = "rcode";
-static const guint8* st_str_packet_opcodes = "opcodes";
-static const guint8* st_str_packets_avg_size = "Payload size";
-static const guint8* st_str_query_stats = "Query Stats";
-static const guint8* st_str_query_qname_len = "Qname Len";
-static const guint8* st_str_query_domains = "Label Stats";
-static const guint8* st_str_query_domains_l1 = "1st Level";
-static const guint8* st_str_query_domains_l2 = "2nd Level";
-static const guint8* st_str_query_domains_l3 = "3rd Level";
-static const guint8* st_str_query_domains_lmore = "4th Level or more";
-static const guint8* st_str_response_stats = "Response Stats";
-static const guint8* st_str_response_nquestions = "no. of questions";
-static const guint8* st_str_response_nanswers = "no. of answers";
-static const guint8* st_str_response_nauthorities = "no. of authorities";
-static const guint8* st_str_response_nadditionals = "no. of additionals";
-static const guint8* st_str_service_stats = "Service Stats";
-static const guint8* st_str_service_unsolicited = "no. of unsolicited responses";
-static const guint8* st_str_service_retransmission = "no. of retransmissions";
-static const guint8* st_str_service_rrt = "request-response time (nsec)";
+static const gchar* st_str_packets = "Total Packets";
+static const gchar* st_str_packet_qr = "Query/Response";
+static const gchar* st_str_packet_qtypes = "Query Type";
+static const gchar* st_str_packet_qclasses = "Class";
+static const gchar* st_str_packet_rcodes = "rcode";
+static const gchar* st_str_packet_opcodes = "opcodes";
+static const gchar* st_str_packets_avg_size = "Payload size";
+static const gchar* st_str_query_stats = "Query Stats";
+static const gchar* st_str_query_qname_len = "Qname Len";
+static const gchar* st_str_query_domains = "Label Stats";
+static const gchar* st_str_query_domains_l1 = "1st Level";
+static const gchar* st_str_query_domains_l2 = "2nd Level";
+static const gchar* st_str_query_domains_l3 = "3rd Level";
+static const gchar* st_str_query_domains_lmore = "4th Level or more";
+static const gchar* st_str_response_stats = "Response Stats";
+static const gchar* st_str_response_nquestions = "no. of questions";
+static const gchar* st_str_response_nanswers = "no. of answers";
+static const gchar* st_str_response_nauthorities = "no. of authorities";
+static const gchar* st_str_response_nadditionals = "no. of additionals";
+static const gchar* st_str_service_stats = "Service Stats";
+static const gchar* st_str_service_unsolicited = "no. of unsolicited responses";
+static const gchar* st_str_service_retransmission = "no. of retransmissions";
+static const gchar* st_str_service_rrt = "request-response time (secs)";
 
 static int st_node_packets = -1;
 static int st_node_packet_qr = -1;
@@ -449,6 +451,13 @@ static guint32 retransmission_timer = 5;
 static dissector_handle_t gssapi_handle;
 static dissector_handle_t ntlmssp_handle;
 
+/* Transport protocol for DNS. */
+enum DnsTransport {
+  DNS_TRANSPORT_UDP,    /* includes compatible transports like SCTP */
+  DNS_TRANSPORT_TCP,
+  DNS_TRANSPORT_HTTP
+};
+
 /* Structure containing transaction specific information */
 typedef struct _dns_transaction_t {
   guint32 req_frame;
@@ -617,6 +626,8 @@ typedef struct _dns_conv_info_t {
 #define O_PADDING       12              /* EDNS(0) Padding Option (RFC7830) */
 #define O_CHAIN         13              /* draft-ietf-dnsop-edns-chain-query */
 
+#define MIN_DNAME_LEN    2              /* minimum domain name length */
+
 static const true_false_string tfs_flags_response = {
   "Message is a response",
   "Message is a query"
@@ -777,6 +788,7 @@ static const value_string tkey_mode_vals[] = {
 #define TSSHFP_ALGO_DSA        (2)
 #define TSSHFP_ALGO_ECDSA      (3)
 #define TSSHFP_ALGO_ED25519    (4)
+#define TSSHFP_ALGO_XMSS       (5)
 
 #define TSSHFP_FTYPE_RESERVED  (0)
 #define TSSHFP_FTYPE_SHA1      (1)
@@ -788,6 +800,7 @@ static const value_string sshfp_algo_vals[] = {
   { TSSHFP_ALGO_DSA,      "DSA" },
   { TSSHFP_ALGO_ECDSA,    "ECDSA" },
   { TSSHFP_ALGO_ED25519,  "Ed25519" },
+  { TSSHFP_ALGO_XMSS,     "XMSS" },
   { 0, NULL }
 };
 
@@ -1165,12 +1178,11 @@ expand_dns_name(tvbuff_t *tvb, int offset, int max_len, int dns_data_offset,
          * than the minimum length, we're looking at bad data and we're liable
          * to put the dissector into a loop.  Instead we throw an exception */
 
-  maxname=MAXDNAME;
+  maxname = MAX_DNAME_LEN;
   np=(guchar *)wmem_alloc(wmem_packet_scope(), maxname);
   *name=np;
   (*name_len) = 0;
 
-  maxname--;   /* reserve space for the trailing '\0' */
   for (;;) {
     if (max_len && offset - start_offset > max_len - 1) {
       break;
@@ -1191,6 +1203,9 @@ expand_dns_name(tvbuff_t *tvb, int offset, int max_len, int dns_data_offset,
             (*name_len)++;
             maxname--;
           }
+        }
+        else {
+          maxname--;
         }
         while (component_len > 0) {
           if (max_len && offset - start_offset > max_len - 1) {
@@ -1222,7 +1237,7 @@ expand_dns_name(tvbuff_t *tvb, int offset, int max_len, int dns_data_offset,
             label_len = (bit_count - 1) / 8 + 1;
 
             if (maxname > 0) {
-              print_len = g_snprintf(np, maxname + 1, "\\[x");
+              print_len = g_snprintf(np, maxname, "\\[x");
               if (print_len <= maxname) {
                 np      += print_len;
                 maxname -= print_len;
@@ -1234,7 +1249,7 @@ expand_dns_name(tvbuff_t *tvb, int offset, int max_len, int dns_data_offset,
             }
             while (label_len--) {
               if (maxname > 0) {
-                print_len = g_snprintf(np, maxname + 1, "%02x",
+                print_len = g_snprintf(np, maxname, "%02x",
                                        tvb_get_guint8(tvb, offset));
                 if (print_len <= maxname) {
                   np      += print_len;
@@ -1248,7 +1263,7 @@ expand_dns_name(tvbuff_t *tvb, int offset, int max_len, int dns_data_offset,
               offset++;
             }
             if (maxname > 0) {
-              print_len = g_snprintf(np, maxname + 1, "/%d]", bit_count);
+              print_len = g_snprintf(np, maxname, "/%d]", bit_count);
               if (print_len <= maxname) {
                 np      += print_len;
                 maxname -= print_len;
@@ -1295,7 +1310,7 @@ expand_dns_name(tvbuff_t *tvb, int offset, int max_len, int dns_data_offset,
          * If we find a pointer to itself, it is a trivial loop. Otherwise if we
          * processed a large number of pointers, assume an indirect loop.
          */
-        if (indir_offset == offset + 2 || pointers_count > MAXDNAME/4) {
+        if (indir_offset == offset + 2 || pointers_count > MAX_DNAME_LEN) {
           *name="<Name contains a pointer that loops>";
           *name_len = (guint)strlen(*name);
           if (len < min_len) {
@@ -1309,7 +1324,15 @@ expand_dns_name(tvbuff_t *tvb, int offset, int max_len, int dns_data_offset,
     }
   }
 
-  *np = '\0';
+  // Do we have space for the terminating 0?
+  if (maxname > 0) {
+    *np = '\0';
+  }
+  else {
+    *name="<Name too long>";
+    *name_len = (guint)strlen(*name);
+  }
+
   /* If "len" is negative, we haven't seen a pointer, and thus haven't
      set the length, so set it. */
   if (len < 0) {
@@ -1326,18 +1349,17 @@ get_dns_name(tvbuff_t *tvb, int offset, int max_len, int dns_data_offset,
     const guchar **name, guint* name_len)
 {
   int len;
-  const int min_len = 2;
 
   len = expand_dns_name(tvb, offset, max_len, dns_data_offset, name, name_len);
 
   /* Zero-length name means "root server" */
-  if (**name == '\0' && len <= min_len) {
+  if (**name == '\0' && len <= MIN_DNAME_LEN) {
     *name="<Root>";
     *name_len = (guint)strlen(*name);
     return len;
   }
 
-  if ((len < min_len) || (len > min_len && *name_len == 0)) {
+  if ((len < MIN_DNAME_LEN) || (len > MIN_DNAME_LEN && *name_len == 0)) {
     THROW(ReportedBoundsError);
   }
 
@@ -1468,11 +1490,11 @@ dissect_dns_query(tvbuff_t *tvb, int offset, int dns_data_offset,
     proto_tree_add_string(q_tree, hf_dns_qry_name, tvb, offset, used_bytes - 4, name_out);
 
     tq = proto_tree_add_uint(q_tree, hf_dns_qry_name_len, tvb, offset, name_len, name_len > 1 ? name_len : 0);
-    PROTO_ITEM_SET_GENERATED(tq);
+    proto_item_set_generated(tq);
 
     labels = qname_labels_count(name, name_len);
     tq = proto_tree_add_uint(q_tree, hf_dns_count_labels, tvb, offset, name_len, labels);
-    PROTO_ITEM_SET_GENERATED(tq);
+    proto_item_set_generated(tq);
 
     offset += used_bytes - 4;
 
@@ -1744,7 +1766,7 @@ compute_key_id(proto_tree *tree, packet_info *pinfo, tvbuff_t *tvb, int offset, 
     proto_item *item;
     *key_id = 0;
     item = proto_tree_add_expert(tree, pinfo, &ei_dns_key_id_buffer_too_short, tvb, offset, size);
-    PROTO_ITEM_SET_GENERATED(item);
+    proto_item_set_generated(item);
     return FALSE;
   }
 
@@ -2170,7 +2192,7 @@ dissect_dns_answer(tvbuff_t *tvb, int offsetx, int dns_data_offset,
         proto_tree_add_item(rr_tree, hf_dns_txt_length, tvb, txt_offset, 1, ENC_BIG_ENDIAN);
         txt_offset += 1;
         rr_len     -= 1;
-        proto_tree_add_item(rr_tree, hf_dns_txt, tvb, txt_offset, txt_len, ENC_ASCII|ENC_NA);
+        proto_tree_add_item(rr_tree, hf_dns_txt, tvb, txt_offset, txt_len, is_mdns ? ENC_UTF_8|ENC_NA : ENC_ASCII|ENC_NA);
         txt_offset +=  txt_len;
         rr_len     -= txt_len;
       }
@@ -2329,7 +2351,7 @@ dissect_dns_answer(tvbuff_t *tvb, int offsetx, int dns_data_offset,
 
       if (compute_key_id(rr_tree, pinfo, tvb, cur_offset-4, rr_len+4, algo, &key_id)) {
         ti_gen = proto_tree_add_uint(rr_tree, hf_dns_key_key_id, tvb, 0, 0, key_id);
-        PROTO_ITEM_SET_GENERATED(ti_gen);
+        proto_item_set_generated(ti_gen);
       }
 
       if (rr_len != 0) {
@@ -2543,7 +2565,7 @@ dissect_dns_answer(tvbuff_t *tvb, int offsetx, int dns_data_offset,
       used_bytes = get_dns_name(tvb, offset, 0, dns_data_offset, &replacement, &replacement_len);
       name_out = format_text(wmem_packet_scope(), replacement, replacement_len);
       ti_len = proto_tree_add_uint(rr_tree, hf_dns_naptr_replacement_length, tvb, offset, 0, replacement_len);
-      PROTO_ITEM_SET_GENERATED(ti_len);
+      proto_item_set_generated(ti_len);
 
       proto_tree_add_string(rr_tree, hf_dns_naptr_replacement, tvb, offset, used_bytes, name_out);
 
@@ -3078,7 +3100,7 @@ dissect_dns_answer(tvbuff_t *tvb, int offsetx, int dns_data_offset,
 
       if (compute_key_id(rr_tree, pinfo, tvb, cur_offset-4, rr_len+4, algo, &key_id)) {
         ti_gen = proto_tree_add_uint(rr_tree, hf_dns_dnskey_key_id, tvb, 0, 0, key_id);
-        PROTO_ITEM_SET_GENERATED(ti_gen);
+        proto_item_set_generated(ti_gen);
       }
 
       proto_tree_add_item(rr_tree, hf_dns_dnskey_public_key, tvb, cur_offset, rr_len, ENC_NA);
@@ -3656,14 +3678,15 @@ dissect_answer_records(tvbuff_t *tvb, int cur_off, int dns_data_offset,
 
 static void
 dissect_dns_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
-    gboolean is_tcp, gboolean is_mdns, gboolean is_llmnr)
+    enum DnsTransport transport, gboolean is_mdns, gboolean is_llmnr)
 {
-  int                offset   = is_tcp ? 2 : 0;
+  int                offset   = transport == DNS_TRANSPORT_TCP ? 2 : 0;
   int                dns_data_offset;
   proto_tree        *dns_tree, *field_tree;
   proto_item        *ti, *tf, *transaction_item;
   guint16            flags, opcode, rcode, quest, ans, auth, add;
   guint              id;
+  guint32            reqresp_id = 0;
   int                cur_off;
   gboolean           isupdate;
   conversation_t    *conversation;
@@ -3676,7 +3699,7 @@ dissect_dns_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
   gboolean           retransmission = FALSE;
   const guchar      *name;
   int                name_len;
-  nstime_t           delta = { 0, 0 };
+  nstime_t           delta = NSTIME_INIT_ZERO;
 
   dns_data_offset = offset;
 
@@ -3724,6 +3747,19 @@ dissect_dns_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
   conversation = find_or_create_conversation(pinfo);
 
   /*
+   * DoH: Each DNS query-response pair is mapped into an HTTP exchange.
+   * For other transports, just use the DNS transaction ID as usual.
+   */
+  if (transport == DNS_TRANSPORT_HTTP) {
+    /* For DoH using HTTP/2, use the Stream ID if available. For HTTP/1,
+     * hopefully there is no pipelining or the DNS ID is unique enough. */
+    reqresp_id = http2_get_stream_id(pinfo);
+  }
+  if (reqresp_id == 0) {
+    reqresp_id = id;
+  }
+
+  /*
    * Do we already have a state structure for this conv
    */
   dns_info = (dns_conv_info_t *)conversation_get_proto_data(conversation, proto_dns);
@@ -3737,20 +3773,20 @@ dissect_dns_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
   }
 
   key[0].length = 1;
-  key[0].key = &id;
+  key[0].key = &reqresp_id;
   key[1].length = 1;
   key[1].key = &pinfo->num;
   key[2].length = 0;
   key[2].key = NULL;
 
-  if (!pinfo->fd->flags.visited) {
+  if (!pinfo->fd->visited) {
     if (!(flags&F_RESPONSE)) {
       /* This is a request */
       gboolean new_transaction = FALSE;
 
       /* Check if we've seen this transaction before */
       dns_trans=(dns_transaction_t *)wmem_tree_lookup32_array_le(dns_info->pdus, key);
-      if ((dns_trans == NULL) || (dns_trans->id != id) || (dns_trans->rep_frame > 0)) {
+      if ((dns_trans == NULL) || (dns_trans->id != reqresp_id) || (dns_trans->rep_frame > 0)) {
         new_transaction = TRUE;
       } else {
         nstime_t request_delta;
@@ -3769,13 +3805,13 @@ dissect_dns_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
         dns_trans->req_frame=pinfo->num;
         dns_trans->rep_frame=0;
         dns_trans->req_time=pinfo->abs_ts;
-        dns_trans->id = id;
+        dns_trans->id = reqresp_id;
         wmem_tree_insert32_array(dns_info->pdus, key, (void *)dns_trans);
       }
     } else {
       dns_trans=(dns_transaction_t *)wmem_tree_lookup32_array_le(dns_info->pdus, key);
       if (dns_trans) {
-        if (dns_trans->id != id) {
+        if (dns_trans->id != reqresp_id) {
           dns_trans = NULL;
         } else if (dns_trans->rep_frame == 0) {
           dns_trans->rep_frame=pinfo->num;
@@ -3787,7 +3823,7 @@ dissect_dns_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
   } else {
     dns_trans=(dns_transaction_t *)wmem_tree_lookup32_array_le(dns_info->pdus, key);
     if (dns_trans) {
-      if (dns_trans->id != id) {
+      if (dns_trans->id != reqresp_id) {
         dns_trans = NULL;
       } else if ((!(flags & F_RESPONSE)) && (dns_trans->req_frame != pinfo->num)) {
         /* This is a request retransmission, create a "fake" dns_trans structure*/
@@ -3811,7 +3847,7 @@ dissect_dns_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
     dns_trans->req_time=pinfo->abs_ts;
   }
 
-  if (is_tcp) {
+  if (transport == DNS_TRANSPORT_TCP) {
     /* Put the length indication into the tree. */
     proto_tree_add_item(dns_tree, hf_dns_length, tvb, offset - 2, 2, ENC_BIG_ENDIAN);
   }
@@ -3946,16 +3982,16 @@ dissect_dns_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
       expert_add_info_format(pinfo, transaction_item, &ei_dns_retransmit_request, "DNS query retransmission. Original request in frame %d", dns_trans->req_frame);
 
       it=proto_tree_add_uint(dns_tree, hf_dns_retransmit_request_in, tvb, 0, 0, dns_trans->req_frame);
-      PROTO_ITEM_SET_GENERATED(it);
+      proto_item_set_generated(it);
 
       if (!pinfo->flags.in_error_pkt) {
         it=proto_tree_add_boolean(dns_tree, hf_dns_retransmission, tvb, 0, 0, TRUE);
-        PROTO_ITEM_SET_GENERATED(it);
+        proto_item_set_generated(it);
       }
     } else if (dns_trans->rep_frame) {
 
       it=proto_tree_add_uint(dns_tree, hf_dns_response_in, tvb, 0, 0, dns_trans->rep_frame);
-      PROTO_ITEM_SET_GENERATED(it);
+      proto_item_set_generated(it);
     }
   } else {
     /* This is a reply */
@@ -3965,24 +4001,24 @@ dissect_dns_common(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
         expert_add_info_format(pinfo, transaction_item, &ei_dns_retransmit_response, "DNS response retransmission. Original response in frame %d", dns_trans->rep_frame);
 
         it=proto_tree_add_uint(dns_tree, hf_dns_retransmit_response_in, tvb, 0, 0, dns_trans->rep_frame);
-        PROTO_ITEM_SET_GENERATED(it);
+        proto_item_set_generated(it);
 
         if (!pinfo->flags.in_error_pkt) {
           it=proto_tree_add_boolean(dns_tree, hf_dns_retransmission, tvb, 0, 0, TRUE);
-          PROTO_ITEM_SET_GENERATED(it);
+          proto_item_set_generated(it);
         }
       } else {
         it=proto_tree_add_uint(dns_tree, hf_dns_response_to, tvb, 0, 0, dns_trans->req_frame);
-        PROTO_ITEM_SET_GENERATED(it);
+        proto_item_set_generated(it);
 
         nstime_delta(&delta, &pinfo->abs_ts, &dns_trans->req_time);
         it=proto_tree_add_time(dns_tree, hf_dns_time, tvb, 0, 0, &delta);
-        PROTO_ITEM_SET_GENERATED(it);
+        proto_item_set_generated(it);
       }
     } else {
       if (!retransmission) {
         it=proto_tree_add_boolean(dns_tree, hf_dns_unsolicited, tvb, 0, 0, TRUE);
-        PROTO_ITEM_SET_GENERATED(it);
+        proto_item_set_generated(it);
       }
     }
   }
@@ -4034,7 +4070,16 @@ dissect_dns_udp_sctp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* 
 {
   col_set_str(pinfo->cinfo, COL_PROTOCOL, "DNS");
 
-  dissect_dns_common(tvb, pinfo, tree, FALSE, FALSE, FALSE);
+  dissect_dns_common(tvb, pinfo, tree, DNS_TRANSPORT_UDP, FALSE, FALSE);
+  return tvb_captured_length(tvb);
+}
+
+static int
+dissect_dns_doh(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_)
+{
+  col_set_str(pinfo->cinfo, COL_PROTOCOL, "DoH");
+
+  dissect_dns_common(tvb, pinfo, tree, DNS_TRANSPORT_HTTP, FALSE, FALSE);
   return tvb_captured_length(tvb);
 }
 
@@ -4043,7 +4088,7 @@ dissect_mdns_udp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data
 {
   col_set_str(pinfo->cinfo, COL_PROTOCOL, "MDNS");
 
-  dissect_dns_common(tvb, pinfo, tree, FALSE, TRUE, FALSE);
+  dissect_dns_common(tvb, pinfo, tree, DNS_TRANSPORT_UDP, TRUE, FALSE);
   return tvb_captured_length(tvb);
 }
 
@@ -4052,7 +4097,7 @@ dissect_llmnr_udp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* dat
 {
   col_set_str(pinfo->cinfo, COL_PROTOCOL, "LLMNR");
 
-  dissect_dns_common(tvb, pinfo, tree, FALSE, FALSE, TRUE);
+  dissect_dns_common(tvb, pinfo, tree, DNS_TRANSPORT_UDP, FALSE, TRUE);
   return tvb_captured_length(tvb);
 }
 
@@ -4077,7 +4122,7 @@ dissect_dns_tcp_pdu(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* d
 {
   col_set_str(pinfo->cinfo, COL_PROTOCOL, "DNS");
 
-  dissect_dns_common(tvb, pinfo, tree, TRUE, FALSE, FALSE);
+  dissect_dns_common(tvb, pinfo, tree, DNS_TRANSPORT_TCP, FALSE, FALSE);
   return tvb_reported_length(tvb);
 }
 
@@ -4092,10 +4137,12 @@ dissect_dns_tcp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data)
 static int
 dissect_dns(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data)
 {
-  /* draft-ietf-doh-dns-over-https-03 */
-  gboolean is_doh = !g_strcmp0(pinfo->match_string, "application/dns-udpwireformat");
+  /* since draft-ietf-doh-dns-over-https-07 */
+  gboolean is_doh = !g_strcmp0(pinfo->match_string, "application/dns-message");
 
-  if (pinfo->ptype == PT_TCP && !is_doh) {
+  if (is_doh) {
+    return dissect_dns_doh(tvb, pinfo, tree, data);
+  } else if (pinfo->ptype == PT_TCP) {
     return dissect_dns_tcp(tvb, pinfo, tree, data);
   } else {
     dissect_dns_udp_sctp(tvb, pinfo, tree, data);
@@ -4105,36 +4152,36 @@ dissect_dns(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data)
 
 static void dns_stats_tree_init(stats_tree* st)
 {
-  st_node_packets = stats_tree_create_node(st, st_str_packets, 0, TRUE);
+  st_node_packets = stats_tree_create_node(st, st_str_packets, 0, STAT_DT_INT, TRUE);
   st_node_packet_qr = stats_tree_create_pivot(st, st_str_packet_qr, st_node_packets);
   st_node_packet_qtypes = stats_tree_create_pivot(st, st_str_packet_qtypes, st_node_packets);
   st_node_packet_qclasses = stats_tree_create_pivot(st, st_str_packet_qclasses, st_node_packets);
   st_node_packet_rcodes = stats_tree_create_pivot(st, st_str_packet_rcodes, st_node_packets);
   st_node_packet_opcodes = stats_tree_create_pivot(st, st_str_packet_opcodes, st_node_packets);
-  st_node_packets_avg_size = stats_tree_create_node(st, st_str_packets_avg_size, 0, FALSE);
-  st_node_query_stats = stats_tree_create_node(st, st_str_query_stats, 0, TRUE);
-  st_node_query_qname_len = stats_tree_create_node(st, st_str_query_qname_len, st_node_query_stats, FALSE);
-  st_node_query_domains = stats_tree_create_node(st, st_str_query_domains, st_node_query_stats, TRUE);
-  st_node_query_domains_l1 = stats_tree_create_node(st, st_str_query_domains_l1, st_node_query_domains, FALSE);
-  st_node_query_domains_l2 = stats_tree_create_node(st, st_str_query_domains_l2, st_node_query_domains, FALSE);
-  st_node_query_domains_l3 = stats_tree_create_node(st, st_str_query_domains_l3, st_node_query_domains, FALSE);
-  st_node_query_domains_lmore = stats_tree_create_node(st, st_str_query_domains_lmore, st_node_query_domains, FALSE);
-  st_node_response_stats = stats_tree_create_node(st, st_str_response_stats, 0, TRUE);
+  st_node_packets_avg_size = stats_tree_create_node(st, st_str_packets_avg_size, 0, STAT_DT_INT, FALSE);
+  st_node_query_stats = stats_tree_create_node(st, st_str_query_stats, 0, STAT_DT_INT, TRUE);
+  st_node_query_qname_len = stats_tree_create_node(st, st_str_query_qname_len, st_node_query_stats, STAT_DT_INT, FALSE);
+  st_node_query_domains = stats_tree_create_node(st, st_str_query_domains, st_node_query_stats, STAT_DT_INT, TRUE);
+  st_node_query_domains_l1 = stats_tree_create_node(st, st_str_query_domains_l1, st_node_query_domains, STAT_DT_INT, FALSE);
+  st_node_query_domains_l2 = stats_tree_create_node(st, st_str_query_domains_l2, st_node_query_domains, STAT_DT_INT, FALSE);
+  st_node_query_domains_l3 = stats_tree_create_node(st, st_str_query_domains_l3, st_node_query_domains, STAT_DT_INT, FALSE);
+  st_node_query_domains_lmore = stats_tree_create_node(st, st_str_query_domains_lmore, st_node_query_domains, STAT_DT_INT, FALSE);
+  st_node_response_stats = stats_tree_create_node(st, st_str_response_stats, 0, STAT_DT_INT, TRUE);
   st_node_response_nquestions = stats_tree_create_node(st, st_str_response_nquestions,
-    st_node_response_stats, FALSE);
+    st_node_response_stats, STAT_DT_INT, FALSE);
   st_node_response_nanswers = stats_tree_create_node(st, st_str_response_nanswers,
-    st_node_response_stats, FALSE);
+    st_node_response_stats, STAT_DT_INT, FALSE);
   st_node_response_nauthorities = stats_tree_create_node(st, st_str_response_nauthorities,
-    st_node_response_stats, FALSE);
+    st_node_response_stats, STAT_DT_INT, FALSE);
   st_node_response_nadditionals = stats_tree_create_node(st, st_str_response_nadditionals,
-    st_node_response_stats, FALSE);
-  st_node_service_stats = stats_tree_create_node(st, st_str_service_stats, 0, TRUE);
-  st_node_service_unsolicited = stats_tree_create_node(st, st_str_service_unsolicited, st_node_service_stats, FALSE);
-  st_node_service_retransmission = stats_tree_create_node(st, st_str_service_retransmission, st_node_service_stats, FALSE);
-  st_node_service_rrt = stats_tree_create_node(st, st_str_service_rrt, st_node_service_stats, FALSE);
+    st_node_response_stats, STAT_DT_INT, FALSE);
+  st_node_service_stats = stats_tree_create_node(st, st_str_service_stats, 0, STAT_DT_INT, TRUE);
+  st_node_service_unsolicited = stats_tree_create_node(st, st_str_service_unsolicited, st_node_service_stats, STAT_DT_INT, FALSE);
+  st_node_service_retransmission = stats_tree_create_node(st, st_str_service_retransmission, st_node_service_stats, STAT_DT_INT, FALSE);
+  st_node_service_rrt = stats_tree_create_node(st, st_str_service_rrt, st_node_service_stats, STAT_DT_FLOAT, FALSE);
 }
 
-static int dns_stats_tree_packet(stats_tree* st, packet_info* pinfo _U_, epan_dissect_t* edt _U_, const void* p)
+static tap_packet_status dns_stats_tree_packet(stats_tree* st, packet_info* pinfo _U_, epan_dissect_t* edt _U_, const void* p)
 {
   const struct DnsTap *pi = (const struct DnsTap *)p;
   tick_stat_node(st, st_str_packets, 0, FALSE);
@@ -4148,12 +4195,12 @@ static int dns_stats_tree_packet(stats_tree* st, packet_info* pinfo _U_, epan_di
           val_to_str(pi->packet_rcode, rcode_vals, "Unknown rcode (%d)"));
   stats_tree_tick_pivot(st, st_node_packet_opcodes,
           val_to_str(pi->packet_opcode, opcode_vals, "Unknown opcode (%d)"));
-  avg_stat_node_add_value(st, st_str_packets_avg_size, 0, FALSE,
+  avg_stat_node_add_value_int(st, st_str_packets_avg_size, 0, FALSE,
           pi->payload_size);
 
   /* split up stats for queries and responses */
   if (pi->packet_qr == 0) {
-    avg_stat_node_add_value(st, st_str_query_qname_len, 0, FALSE, pi->qname_len);
+    avg_stat_node_add_value_int(st, st_str_query_qname_len, 0, FALSE, pi->qname_len);
     switch(pi->qname_labels) {
       case 1:
         tick_stat_node(st, st_str_query_domains_l1, 0, FALSE);
@@ -4169,28 +4216,28 @@ static int dns_stats_tree_packet(stats_tree* st, packet_info* pinfo _U_, epan_di
         break;
     }
   } else {
-    avg_stat_node_add_value(st, st_str_response_nquestions, 0, FALSE, pi->nquestions);
-    avg_stat_node_add_value(st, st_str_response_nanswers, 0, FALSE, pi->nanswers);
-    avg_stat_node_add_value(st, st_str_response_nauthorities, 0, FALSE, pi->nauthorities);
-    avg_stat_node_add_value(st, st_str_response_nadditionals, 0, FALSE, pi->nadditionals);
+    avg_stat_node_add_value_int(st, st_str_response_nquestions, 0, FALSE, pi->nquestions);
+    avg_stat_node_add_value_int(st, st_str_response_nanswers, 0, FALSE, pi->nanswers);
+    avg_stat_node_add_value_int(st, st_str_response_nauthorities, 0, FALSE, pi->nauthorities);
+    avg_stat_node_add_value_int(st, st_str_response_nadditionals, 0, FALSE, pi->nadditionals);
     if (pi->unsolicited) {
       tick_stat_node(st, st_str_service_unsolicited, 0, FALSE);
     } else {
-        avg_stat_node_add_value(st, st_str_response_nquestions, 0, FALSE, pi->nquestions);
-        avg_stat_node_add_value(st, st_str_response_nanswers, 0, FALSE, pi->nanswers);
-        avg_stat_node_add_value(st, st_str_response_nauthorities, 0, FALSE, pi->nauthorities);
-        avg_stat_node_add_value(st, st_str_response_nadditionals, 0, FALSE, pi->nadditionals);
+        avg_stat_node_add_value_int(st, st_str_response_nquestions, 0, FALSE, pi->nquestions);
+        avg_stat_node_add_value_int(st, st_str_response_nanswers, 0, FALSE, pi->nanswers);
+        avg_stat_node_add_value_int(st, st_str_response_nauthorities, 0, FALSE, pi->nauthorities);
+        avg_stat_node_add_value_int(st, st_str_response_nadditionals, 0, FALSE, pi->nadditionals);
         if (pi->unsolicited) {
           tick_stat_node(st, st_str_service_unsolicited, 0, FALSE);
         } else {
           if (pi->retransmission)
             tick_stat_node(st, st_str_service_retransmission, 0, FALSE);
           else
-            avg_stat_node_add_value(st, st_str_service_rrt, 0, FALSE, (guint32)(pi->rrt.secs * 1000000 + pi->rrt.nsecs));
+            avg_stat_node_add_value_float(st, st_str_service_rrt, 0, FALSE, (gfloat)(pi->rrt.secs + pi->rrt.nsecs/1000000000.0));
         }
     }
   }
-  return 1;
+  return TAP_PACKET_REDRAW;
 }
 
 void
@@ -4214,7 +4261,7 @@ proto_reg_handoff_dns(void)
   dtls_dissector_add(UDP_PORT_DNS_DTLS, dns_handle);
   dissector_add_uint_range_with_preference("tcp.port", DEFAULT_DNS_TCP_PORT_RANGE, dns_handle);
   dissector_add_uint_range_with_preference("udp.port", DEFAULT_DNS_PORT_RANGE, dns_handle);
-  dissector_add_string("media_type", "application/dns-udpwireformat", dns_handle); /* draft-ietf-doh-dns-over-https-03 */
+  dissector_add_string("media_type", "application/dns-message", dns_handle); /* since draft-ietf-doh-dns-over-https-07 */
 }
 
 void
@@ -4643,7 +4690,7 @@ proto_register_dns(void)
 
     { &hf_dns_txt,
       { "TXT", "dns.txt",
-        FT_STRING, BASE_NONE, NULL, 0x0,
+        FT_STRING, STR_UNICODE, NULL, 0x0,
         NULL, HFILL }},
 
     { &hf_dns_openpgpkey,

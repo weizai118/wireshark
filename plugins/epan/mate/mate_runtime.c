@@ -666,7 +666,7 @@ static void get_pdu_fields(gpointer k, gpointer v, gpointer p) {
 			start = fi->start;
 			end = fi->start + fi->length;
 
-			dbg_print(dbg_pdu,5,dbg_facility,"get_pdu_fields: found field %i-%i",start,end);
+			dbg_print(dbg_pdu,5,dbg_facility,"get_pdu_fields: found field %s, %i-%i, length %i", fi->hfinfo->abbrev, start, end, fi->length);
 
 			for (j = 0; j < data->ranges->len; j++) {
 
@@ -916,7 +916,7 @@ extern mate_pdu* mate_get_pdus(guint32 framenum) {
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

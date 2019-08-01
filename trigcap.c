@@ -15,7 +15,7 @@
 #include <errno.h>
 #include <getopt.h>
 
-#include <wsutil/wspcap.h>
+#include "wspcap.h"
 
 static int dumping;
 static volatile int keep_going;
@@ -280,7 +280,7 @@ int main(int argc, char** argv) {
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

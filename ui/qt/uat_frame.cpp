@@ -18,6 +18,7 @@
 #include <ui/qt/widgets/display_filter_edit.h>
 #include "wireshark_application.h"
 
+#include <ui/qt/widgets/copy_from_profile_menu.h>
 #include <ui/qt/utils/qt_ui_utils.h>
 #include <wsutil/report_message.h>
 
@@ -37,6 +38,13 @@ UatFrame::UatFrame(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    ui->newToolButton->setStockIcon("list-add");
+    ui->deleteToolButton->setStockIcon("list-remove");
+    ui->copyToolButton->setStockIcon("list-copy");
+    ui->moveUpToolButton->setStockIcon("list-move-up");
+    ui->moveDownToolButton->setStockIcon("list-move-down");
+    ui->clearToolButton->setStockIcon("list-clear");
+
 #ifdef Q_OS_MAC
     ui->newToolButton->setAttribute(Qt::WA_MacSmallSize, true);
     ui->deleteToolButton->setAttribute(Qt::WA_MacSmallSize, true);
@@ -49,7 +57,7 @@ UatFrame::UatFrame(QWidget *parent) :
 
     // FIXME: this prevents the columns from being resized, even if the text
     // within a combobox needs more space (e.g. in the USER DLT settings).  For
-    // very long filenames in the SSL RSA keys dialog, it also results in a
+    // very long filenames in the TLS RSA keys dialog, it also results in a
     // vertical scrollbar. Maybe remove this since the editor is not limited to
     // the column width (and overlays other fields if more width is needed)?
     ui->uatTreeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
@@ -82,6 +90,13 @@ void UatFrame::setUat(epan_uat *uat)
             title = uat_->name;
         }
 
+        if (uat->from_profile) {
+            CopyFromProfileMenu *copy_from_menu = new CopyFromProfileMenu(uat_->filename, ui->copyFromProfileButton);
+            ui->copyFromProfileButton->setMenu(copy_from_menu);
+            ui->copyFromProfileButton->setEnabled(copy_from_menu->haveProfiles());
+            connect(copy_from_menu, SIGNAL(triggered(QAction *)), this, SLOT(copyFromProfile(QAction *)));
+        }
+
         QString abs_path = gchar_free_to_qstring(uat_get_actual_filename(uat_, FALSE));
         ui->pathLabel->setText(abs_path);
         ui->pathLabel->setUrl(QUrl::fromLocalFile(abs_path).toString());
@@ -104,6 +119,27 @@ void UatFrame::setUat(epan_uat *uat)
     setWindowTitle(title);
 }
 
+void UatFrame::copyFromProfile(QAction *action)
+{
+    QString filename = action->data().toString();
+
+    gchar *err = NULL;
+    if (uat_load(uat_, filename.toUtf8().constData(), &err)) {
+        uat_->changed = TRUE;
+        uat_model_->reloadUat();
+    } else {
+        report_failure("Error while loading %s: %s", uat_->name, err);
+        g_free(err);
+    }
+}
+
+void UatFrame::showEvent(QShowEvent *)
+{
+#ifndef Q_OS_MAC
+    ui->copyFromProfileButton->setFixedHeight(ui->copyToolButton->geometry().height());
+#endif
+}
+
 void UatFrame::applyChanges()
 {
     if (!uat_) return;
@@ -120,37 +156,26 @@ void UatFrame::applyChanges()
 
 void UatFrame::acceptChanges()
 {
-    if (!uat_) return;
+    if (!uat_model_) return;
 
-    if (uat_->changed) {
-        gchar *err = NULL;
-
-        if (!uat_save(uat_, &err)) {
-            report_failure("Error while saving %s: %s", uat_->name, err);
-            g_free(err);
+    QString error;
+    if (uat_model_->applyChanges(error)) {
+        if (!error.isEmpty()) {
+            report_failure("%s", qPrintable(error));
         }
-
-        if (uat_->post_update_cb) {
-            uat_->post_update_cb();
-        }
-
         applyChanges();
     }
 }
 
 void UatFrame::rejectChanges()
 {
-    if (!uat_) return;
+    if (!uat_model_) return;
 
-    if (uat_->changed) {
-        gchar *err = NULL;
-        uat_clear(uat_);
-        if (!uat_load(uat_, &err)) {
-            report_failure("Error while loading %s: %s", uat_->name, err);
-            g_free(err);
+    QString error;
+    if (uat_model_->revertChanges(error)) {
+        if (!error.isEmpty()) {
+            report_failure("%s", qPrintable(error));
         }
-        //Filter expressions don't affect dissection, so there is no need to
-        //send any events to that effect
     }
 }
 
@@ -224,7 +249,7 @@ void UatFrame::modelRowsRemoved()
 void UatFrame::modelRowsReset()
 {
     ui->deleteToolButton->setEnabled(false);
-    ui->clearToolButton->setEnabled(false);
+    ui->clearToolButton->setEnabled(uat_model_->rowCount() != 0);
     ui->copyToolButton->setEnabled(false);
     ui->moveUpToolButton->setEnabled(false);
     ui->moveDownToolButton->setEnabled(false);

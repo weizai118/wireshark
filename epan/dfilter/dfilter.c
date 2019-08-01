@@ -221,6 +221,7 @@ dfilter_compile(const gchar *text, dfilter_t **dfp, gchar **err_msg)
 	}
 
 	if ( !( expanded_text = dfilter_macro_apply(text, err_msg) ) ) {
+		*dfp = NULL;
 		return FALSE;
 	}
 
@@ -453,7 +454,7 @@ dfilter_dump(dfilter_t *df)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

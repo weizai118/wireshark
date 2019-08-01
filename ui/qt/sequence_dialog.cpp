@@ -46,7 +46,7 @@
 //     this easier.
 // - For general flows, let the user show columns other than COL_INFO.
 // - Add UTF8 to text dump
-// - Save to XMI? http://www.umlgraph.org/
+// - Save to XMI? https://www.spinellis.gr/umlgraph/
 // - Time: abs vs delta
 // - Hide nodes
 // - Clickable time + comments?
@@ -429,7 +429,7 @@ void SequenceDialog::fillDiagram()
                 filter = cap_file_.capFile()->dfilter;
 
             error_string = register_tap_listener(sequence_analysis_get_tap_listener_name(analysis), info_->sainfo(), filter, sequence_analysis_get_tap_flags(analysis),
-                                       NULL, sequence_analysis_get_packet_func(analysis), NULL);
+                                       NULL, sequence_analysis_get_packet_func(analysis), NULL, NULL);
             if (error_string) {
                 report_failure("Sequence dialog - tap registration failed: %s", error_string->str);
                 g_string_free(error_string, TRUE);

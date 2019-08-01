@@ -36,9 +36,9 @@ typedef struct mac_nr_info
     /* Extra info to display */
     guint16         rnti;
     guint16         ueid;
+    guint8          harqid;
 
-    /* Will these be include in the ME PHR report? */
-    guint8          phr_type2_pcell;
+    /* Will these be included in the ME PHR report? */
     guint8          phr_type2_othercell;
 
     /* Timing info */
@@ -97,19 +97,51 @@ void set_mac_nr_proto_data(packet_info *pinfo, mac_nr_info *p_mac_nr_info);
 #define MAC_NR_FRAME_SUBFRAME_TAG      0x04
 /* 2 bytes, network order, SFN is stored in 12 MSB and SF in 4 LSB */
 
-#define MAC_NR_PHR_TYPE2_PCELL_TAG     0x05
+#define MAC_NR_PHR_TYPE2_OTHERCELL_TAG 0x05
 /* 1 byte, TRUE/FALSE */
 
-#define MAC_NR_PHR_TYPE2_OTHERCELL_TAG 0x06
-/* 1 byte, TRUE/FALSE */
+#define MAC_NR_HARQID                  0x06
+/* 1 byte */
 
 
 /* MAC PDU. Following this tag comes the actual MAC PDU (there is no length, the PDU
    continues until the end of the frame) */
 #define MAC_NR_PAYLOAD_TAG         0x01
 
+
+/* Type to store parameters for configuring LCID->RLC channel settings for DRB */
+/* Some are optional, and may not be seen (e.g. on reestablishment) */
+typedef struct nr_drb_mapping_t
+{
+    guint16    ueid;                /* Mandatory */
+    guint8     drbid;               /* Mandatory */
+    gboolean   lcid_present;
+    guint8     lcid;                /* Part of LogicalChannelConfig - optional */
+    gboolean   rlcMode_present;
+    guint8     rlcMode;             /* Part of RLC config - optional */
+
+    guint8     tempDirection;       /* So know direction of next SN length... */
+
+    gboolean   rlcUlSnLength_present;
+    guint8     rlcUlSnLength;        /* Part of RLC config - optional */
+    gboolean   rlcDlSnLength_present;
+    guint8     rlcDlSnLength;        /* Part of RLC config - optional */
+
+    gboolean   pdcpUlSnLength_present;
+    guint8     pdcpUlSnLength;        /* Part of PDCP config - optional */
+    gboolean   pdcpDlSnLength_present;
+    guint8     pdcpDlSnLength;        /* Part of PDCP config - optional */
+
+} nr_drb_mapping_t;
+
+
+/* Set details of an LCID -> drb channel mapping.  To be called from
+   configuration protocol (i.e. RRC) */
+void set_mac_nr_bearer_mapping(nr_drb_mapping_t *drb_mapping);
+
+
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 4

@@ -44,8 +44,26 @@ public:
     bool copyRow(int dst_row, int src_row);
     bool moveRow(int src_row, int dst_row);
 
+    void reloadUat();
     bool hasErrors() const;
     void clearAll();
+
+    /**
+     * If the UAT has changed, save the contents to file and invoke the UAT
+     * post_update_cb.
+     *
+     * @param error An error while saving changes, if any.
+     * @return true if anything changed, false otherwise.
+     */
+    bool applyChanges(QString &error);
+
+    /**
+     * Undo any changes to the UAT.
+     *
+     * @param error An error while restoring the original UAT, if any.
+     * @return true if anything changed, false otherwise.
+     */
+    bool revertChanges(QString &error);
 
     QModelIndex findRowForColumnContent(QVariant columnContent, int columnToCheckAgainst, int role = Qt::DisplayRole);
 

@@ -36,6 +36,8 @@ static int hf_eap_type = -1;
 static int hf_eap_type_nak = -1;
 
 static int hf_eap_identity = -1;
+static int hf_eap_identity_pseudo = -1;
+static int hf_eap_identity_reauth = -1;
 static int hf_eap_identity_actual_len = -1;
 static int hf_eap_identity_wlan_prefix = -1;
 static int hf_eap_identity_wlan_mcc = -1;
@@ -94,10 +96,13 @@ static expert_field ei_eap_ms_chap_v2_length = EI_INIT;
 static expert_field ei_eap_mitm_attacks = EI_INIT;
 static expert_field ei_eap_md5_value_size_overflow = EI_INIT;
 static expert_field ei_eap_dictionary_attacks = EI_INIT;
+static expert_field ei_eap_identity_invalid = EI_INIT;
+
+static dissector_table_t eap_expanded_type_dissector_table;
 
 static dissector_handle_t eap_handle;
 
-static dissector_handle_t ssl_handle;
+static dissector_handle_t tls_handle;
 
 const value_string eap_code_vals[] = {
   { EAP_REQUEST,  "Request" },
@@ -392,10 +397,6 @@ static const fragment_items eap_tls_frag_items = {
 static int   hf_eap_ext_vendor_id   = -1;
 static int   hf_eap_ext_vendor_type = -1;
 
-/* Vendor-Type and Vendor-id */
-#define WFA_VENDOR_ID         0x00372A
-#define WFA_SIMPLECONFIG_TYPE 0x1
-
 static const value_string eap_ext_vendor_id_vals[] = {
   { WFA_VENDOR_ID, "WFA" },
   { 0, NULL }
@@ -408,19 +409,32 @@ static const value_string eap_ext_vendor_type_vals[] = {
 
 static void
 dissect_exteap(proto_tree *eap_tree, tvbuff_t *tvb, int offset,
-               gint size, packet_info* pinfo)
+               gint size _U_, packet_info* pinfo, guint8 eap_code, guint8 eap_identifier)
 {
+  tvbuff_t   *next_tvb;
+  guint32    vendor_id;
+  guint32    vendor_type;
+  eap_vendor_context *vendor_context;
 
-  proto_tree_add_item(eap_tree, hf_eap_ext_vendor_id,   tvb, offset, 3, ENC_BIG_ENDIAN);
+  vendor_context = wmem_new(wmem_packet_scope(), eap_vendor_context);
+
+  proto_tree_add_item_ret_uint(eap_tree, hf_eap_ext_vendor_id, tvb, offset, 3, ENC_BIG_ENDIAN, &vendor_id);
   offset += 3;
-  size   -= 3;
 
-  proto_tree_add_item(eap_tree, hf_eap_ext_vendor_type, tvb, offset, 4, ENC_BIG_ENDIAN);
+  proto_tree_add_item_ret_uint(eap_tree, hf_eap_ext_vendor_type, tvb, offset, 4, ENC_BIG_ENDIAN, &vendor_type);
   offset += 4;
-  size   -= 4;
 
-  /* Generic method to support multiple vendor-defined extended types goes here :-) */
-  dissect_exteap_wps(eap_tree, tvb, offset, size, pinfo);
+  vendor_context->eap_code = eap_code;
+  vendor_context->eap_identifier = eap_identifier;
+  vendor_context->vendor_id = vendor_id;
+  vendor_context->vendor_type = vendor_type;
+
+  next_tvb = tvb_new_subset_remaining(tvb, offset);
+  if (!dissector_try_uint_new(eap_expanded_type_dissector_table,
+    vendor_id, next_tvb, pinfo, eap_tree,
+    FALSE, vendor_context)) {
+    call_data_dissector(next_tvb, pinfo, eap_tree);
+  }
 }
 /* *********************************************************************
 ********************************************************************* */
@@ -543,6 +557,7 @@ dissect_eap_identity_wlan(tvbuff_t *tvb, packet_info* pinfo, proto_tree* tree, i
   guint       ntokens = 0;
   gboolean    ret = TRUE;
   int         hf_eap_identity_wlan_mcc_mnc;
+  proto_item* item;
 
   identity = tvb_get_string_enc(wmem_packet_scope(), tvb, offset, size, ENC_ASCII);
 
@@ -566,10 +581,28 @@ dissect_eap_identity_wlan(tvbuff_t *tvb, packet_info* pinfo, proto_tree* tree, i
   /* Go on with the dissection */
   eap_identity_tree = proto_item_add_subtree(tree, ett_identity);
   eap_identity_prefix = tokens[0][0];
-  proto_tree_add_uint(eap_identity_tree, hf_eap_identity_wlan_prefix,
+  item = proto_tree_add_uint(eap_identity_tree, hf_eap_identity_wlan_prefix,
     tvb, offset, 1, eap_identity_prefix);
 
-  dissect_e212_utf8_imsi(tvb, pinfo, eap_identity_tree, offset + 1, (guint)strlen(tokens[0]) - 1);
+  switch(eap_identity_prefix) {
+    case '0':
+    case '1':
+    case '6':
+      dissect_e212_utf8_imsi(tvb, pinfo, eap_identity_tree, offset + 1, (guint)strlen(tokens[0]) - 1);
+      break;
+    case '2':
+    case '3':
+    case '7':
+      proto_tree_add_item(eap_identity_tree, hf_eap_identity_pseudo, tvb, offset + 1, (guint)strlen(tokens[0]) - 1, ENC_ASCII|ENC_NA);
+      break;
+    case '4':
+    case '5':
+    case '8':
+      proto_tree_add_item(eap_identity_tree, hf_eap_identity_reauth, tvb, offset + 1, (guint)strlen(tokens[0]) - 1, ENC_ASCII|ENC_NA);
+      break;
+    default:
+      expert_add_info(pinfo, item, &ei_eap_identity_invalid);
+  }
 
   /* guess if we have a 3 bytes mnc by comparing the first bytes with the imsi */
   if (!sscanf(tokens[2] + 3, "%u", &mnc) || !sscanf(tokens[3] + 3, "%u", &mcc)) {
@@ -755,6 +788,7 @@ static int
 dissect_eap(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
 {
   guint8          eap_code;
+  guint8          eap_identifier;
   guint16         eap_len;
   guint8          eap_type;
   gint            len;
@@ -772,6 +806,7 @@ dissect_eap(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
   col_clear(pinfo->cinfo, COL_INFO);
 
   eap_code = tvb_get_guint8(tvb, 0);
+  eap_identifier = tvb_get_guint8(tvb, 1);
 
   col_add_str(pinfo->cinfo, COL_INFO,
                 val_to_str(eap_code, eap_code_vals, "Unknown code (0x%02X)"));
@@ -887,7 +922,7 @@ dissect_eap(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
           eap_identity_item = proto_tree_add_item(eap_tree, hf_eap_identity, tvb, offset, size, ENC_ASCII|ENC_NA);
           dissect_eap_identity(tvb, pinfo, eap_identity_item, offset, size);
         }
-        if(!pinfo->fd->flags.visited) {
+        if(!pinfo->fd->visited) {
           conversation_state->leap_state  =  0;
           conversation_state->eap_tls_seq = -1;
         }
@@ -1024,7 +1059,7 @@ dissect_eap(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
             /*
              * We haven't - does this message require reassembly?
              */
-            if (!pinfo->fd->flags.visited) {
+            if (!pinfo->fd->visited) {
               /*
                * This is the first time we've looked at this frame,
                * so it wouldn't have any remembered information.
@@ -1144,13 +1179,13 @@ dissect_eap(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
               show_fragment_seq_tree(fd_head, &eap_tls_frag_items,
                                      eap_tree, pinfo, next_tvb, &frag_tree_item);
 
-              call_dissector(ssl_handle, next_tvb, pinfo, eap_tree);
+              call_dissector(tls_handle, next_tvb, pinfo, eap_tree);
 
               /*
                * We're finished reassembing this frame.
                * Reinitialize the reassembly state.
                */
-              if (!pinfo->fd->flags.visited)
+              if (!pinfo->fd->visited)
                 conversation_state->eap_tls_seq = -1;
             }
 
@@ -1158,7 +1193,7 @@ dissect_eap(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
 
           } else { /* this data is NOT fragmented */
             next_tvb = tvb_new_subset_length_caplen(tvb, offset, tvb_len, size);
-            call_dissector(ssl_handle, next_tvb, pinfo, eap_tree);
+            call_dissector(tls_handle, next_tvb, pinfo, eap_tree);
           }
         }
       }
@@ -1285,7 +1320,7 @@ dissect_eap(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
         proto_tree *exptree;
 
         exptree   = proto_tree_add_subtree(eap_tree, tvb, offset, size, ett_eap_exp_attr, NULL, "Expanded Type");
-        dissect_exteap(exptree, tvb, offset, size, pinfo);
+        dissect_exteap(exptree, tvb, offset, size, pinfo, eap_code, eap_identifier);
       }
       break;
 
@@ -1336,6 +1371,16 @@ proto_register_eap(void)
 
     { &hf_eap_identity, {
       "Identity", "eap.identity",
+      FT_STRING, BASE_NONE, NULL, 0x0,
+      NULL, HFILL }},
+
+    { &hf_eap_identity_pseudo, {
+      "Identity (Pseudonym)", "eap.identity",
+      FT_STRING, BASE_NONE, NULL, 0x0,
+      NULL, HFILL }},
+
+    { &hf_eap_identity_reauth, {
+      "Identity (Reauth)", "eap.identity",
       FT_STRING, BASE_NONE, NULL, 0x0,
       NULL, HFILL }},
 
@@ -1664,6 +1709,7 @@ proto_register_eap(void)
      { &ei_eap_dictionary_attacks, { "eap.dictionary_attacks", PI_SECURITY, PI_WARN,
                                "Vulnerable to dictionary attacks. If possible, change EAP type."
                                " See http://www.cisco.com/warp/public/cc/pd/witc/ao350ap/prodlit/2331_pp.pdf", EXPFILL }},
+     { &ei_eap_identity_invalid, { "eap.identity.invalid", PI_PROTOCOL, PI_WARN, "Invalid identity code", EXPFILL }}
   };
 
   expert_module_t* expert_eap;
@@ -1679,6 +1725,12 @@ proto_register_eap(void)
 
   reassembly_table_register(&eap_tls_reassembly_table,
                         &addresses_reassembly_table_functions);
+
+  eap_expanded_type_dissector_table = register_dissector_table("eap.ext.vendor_id",
+    "EAP-EXT Vendor Id",
+    proto_eap, FT_UINT24,
+    BASE_HEX);
+
 }
 
 void
@@ -1687,7 +1739,7 @@ proto_reg_handoff_eap(void)
   /*
    * Get a handle for the SSL/TLS dissector.
    */
-  ssl_handle = find_dissector_add_dependency("ssl", proto_eap);
+  tls_handle = find_dissector_add_dependency("tls", proto_eap);
 
   dissector_add_uint("ppp.protocol", PPP_EAP, eap_handle);
   dissector_add_uint("eapol.type", EAPOL_EAP, eap_handle);

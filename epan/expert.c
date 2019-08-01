@@ -481,12 +481,12 @@ expert_create_tree(proto_item *pi, int group, int severity, const char *msg)
 					    val_to_str(severity, expert_severity_vals, "Unknown (%u)"),
 					    val_to_str(group, expert_group_vals, "Unknown (%u)"),
 					    msg);
-	PROTO_ITEM_SET_GENERATED(ti);
+	proto_item_set_generated(ti);
 
 	if (group == PI_MALFORMED) {
 		/* Add hidden malformed protocol filter */
 		proto_item *malformed_ti = proto_tree_add_item(tree, proto_malformed, NULL, 0, 0, ENC_NA);
-		PROTO_ITEM_SET_HIDDEN(malformed_ti);
+		proto_item_set_hidden(malformed_ti);
 	}
 
 	return proto_item_add_subtree(ti, ett_subexpert);
@@ -536,22 +536,22 @@ expert_set_info_vformat(packet_info *pinfo, proto_item *pi, int group, int sever
 	if (hf_index == -1) {
 		/* If no filterable expert info, just add the message */
 		ti = proto_tree_add_string(tree, hf_expert_msg, NULL, 0, 0, formatted);
-		PROTO_ITEM_SET_GENERATED(ti);
+		proto_item_set_generated(ti);
 	} else {
 		/* If filterable expert info, hide the "generic" form of the message,
 		   and generate the formatted filterable expert info */
 		ti = proto_tree_add_none_format(tree, hf_index, NULL, 0, 0, "%s", formatted);
-		PROTO_ITEM_SET_GENERATED(ti);
+		proto_item_set_generated(ti);
 		ti = proto_tree_add_string(tree, hf_expert_msg, NULL, 0, 0, formatted);
-		PROTO_ITEM_SET_HIDDEN(ti);
+		proto_item_set_hidden(ti);
 	}
 
 	ti = proto_tree_add_uint_format_value(tree, hf_expert_severity, NULL, 0, 0, severity,
 					      "%s", val_to_str_const(severity, expert_severity_vals, "Unknown"));
-	PROTO_ITEM_SET_GENERATED(ti);
+	proto_item_set_generated(ti);
 	ti = proto_tree_add_uint_format_value(tree, hf_expert_group, NULL, 0, 0, group,
 					      "%s", val_to_str_const(group, expert_group_vals, "Unknown"));
-	PROTO_ITEM_SET_GENERATED(ti);
+	proto_item_set_generated(ti);
 
 	tap = have_tap_listener(expert_tap);
 
@@ -641,9 +641,7 @@ proto_tree_add_expert_internal(proto_tree *tree, packet_info *pinfo, expert_fiel
 	va_end(unused);
 
 	/* But make sure it throws an exception *after* adding the item */
-	if (length == -1) {
-		length = tvb_captured_length(tvb) ? tvb_ensure_captured_length_remaining(tvb, start) : 0;
-	} else {
+	if (length != -1) {
 		tvb_ensure_bytes_exist(tvb, start, length);
 	}
 	return ti;
@@ -684,16 +682,14 @@ proto_tree_add_expert_format(proto_tree *tree, packet_info *pinfo, expert_field 
 	va_end(ap);
 
 	/* But make sure it throws an exception *after* adding the item */
-	if (length == -1) {
-		length = tvb_captured_length(tvb) ? tvb_ensure_captured_length_remaining(tvb, start) : 0;
-	} else {
+	if (length != -1) {
 		tvb_ensure_bytes_exist(tvb, start, length);
 	}
 	return ti;
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

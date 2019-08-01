@@ -1293,7 +1293,8 @@ void LBMLBTRMTransportDialog::fillTree(void)
         TL_REQUIRES_COLUMNS,
         resetTap,
         tapPacket,
-        drawTreeItems);
+        drawTreeItems,
+        NULL);
     if (error_string)
     {
         QMessageBox::critical(this, tr("LBT-RM Statistics failed to attach to tap"),
@@ -1322,16 +1323,16 @@ void LBMLBTRMTransportDialog::resetTap(void * tap_data)
     info->clearMaps();
 }
 
-gboolean LBMLBTRMTransportDialog::tapPacket(void * tap_data, packet_info * pinfo, epan_dissect_t *, const void * tap_info)
+tap_packet_status LBMLBTRMTransportDialog::tapPacket(void * tap_data, packet_info * pinfo, epan_dissect_t *, const void * tap_info)
 {
-    if (pinfo->fd->flags.passed_dfilter == 1)
+    if (pinfo->fd->passed_dfilter == 1)
     {
         const lbm_lbtrm_tap_info_t * tapinfo = (const lbm_lbtrm_tap_info_t *)tap_info;
         LBMLBTRMTransportDialogInfo * info = (LBMLBTRMTransportDialogInfo *)tap_data;
 
         info->processPacket(pinfo, tapinfo);
     }
-    return (TRUE);
+    return (TAP_PACKET_REDRAW);
 }
 
 void LBMLBTRMTransportDialog::drawTreeItems(void *)
@@ -1615,7 +1616,7 @@ void LBMLBTRMTransportDialog::actionSourceAutoResizeColumns_triggered(void)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 4

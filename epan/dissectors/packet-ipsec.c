@@ -517,12 +517,12 @@ static void show_esp_sequence_info(guint32 spi, guint32 sequence_number,
       proto_item_append_text(sn_ti, " (%u SNs missing)",
                              sequence_number - (status->previousSequenceNumber+1));
     }
-    PROTO_ITEM_SET_GENERATED(sn_ti);
+    proto_item_set_generated(sn_ti);
 
     /* Link back to previous frame for SPI */
     frame_ti = proto_tree_add_uint(tree, hf_esp_sequence_analysis_previous_frame,
                                    tvb, 0, 0, status->previousFrameNum);
-    PROTO_ITEM_SET_GENERATED(frame_ti);
+    proto_item_set_generated(frame_ti);
 
     /* Expert info */
     if (sequence_number == status->previousSequenceNumber) {
@@ -729,7 +729,7 @@ get_full_ipv6_addr(char* ipv6_addr_expanded, char *ipv6_addr)
   }
 
   if(suffix_len < IPSEC_STRLEN_IPV6)
-    return (prefix_len - prefix_remaining);
+    return (int) strlen(ipv6_addr) - suffix_cpt - prefix_remaining;
   else
     return (int) strlen(ipv6_addr) - suffix_cpt;
 }
@@ -1260,11 +1260,11 @@ dissect_esp_authentication(proto_tree *tree, tvbuff_t *tvb, gint len, gint esp_a
 
   item = proto_tree_add_boolean(icv_tree, hf_esp_icv_good,
                                 tvb, len - esp_auth_len, esp_auth_len, good);
-  PROTO_ITEM_SET_GENERATED(item);
+  proto_item_set_generated(item);
 
   item = proto_tree_add_boolean(icv_tree, hf_esp_icv_bad,
                                 tvb, len - esp_auth_len, esp_auth_len, bad);
-  PROTO_ITEM_SET_GENERATED(item);
+  proto_item_set_generated(item);
 }
 
 static int
@@ -1359,7 +1359,7 @@ dissect_esp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_)
 
   /* Sequence number analysis */
   if (g_esp_do_sequence_analysis) {
-    if (!pinfo->fd->flags.visited) {
+    if (!pinfo->fd->visited) {
       check_esp_sequence_info(spi, sequence_number, pinfo);
     }
     show_esp_sequence_info(spi, sequence_number,
@@ -1536,9 +1536,6 @@ dissect_esp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_)
 
         if((authentication_check_using_hmac_libgcrypt) && (!authentication_ok))
         {
-          gcry_control (GCRYCTL_DISABLE_SECMEM, 0);
-          gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0);
-
           /* Allocate Buffers for Authenticator Field  */
           authenticator_data = (guint8 *)wmem_alloc0(wmem_packet_scope(), esp_auth_len + 1);
           tvb_memcpy(tvb, authenticator_data, len - esp_auth_len, esp_auth_len);
@@ -2383,7 +2380,7 @@ proto_register_ipsec(void)
 
   static build_valid_func ah_da_build_value[1] = {ah_value};
   static decode_as_value_t ah_da_values = {ah_prompt, 1, ah_da_build_value};
-  static decode_as_t ah_da = {"ah", "Network", "ip.proto", 1, 0, &ah_da_values, NULL, NULL,
+  static decode_as_t ah_da = {"ah", "ip.proto", 1, 0, &ah_da_values, NULL, NULL,
                                   decode_as_default_populate_list, decode_as_default_reset, decode_as_default_change, NULL};
 
   module_t *ah_module;

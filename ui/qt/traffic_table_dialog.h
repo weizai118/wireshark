@@ -49,7 +49,6 @@ class TrafficTableTreeWidget : public QTreeWidget
     Q_OBJECT
 public:
     explicit TrafficTableTreeWidget(QWidget *parent, register_ct_t* table);
-    ~TrafficTableTreeWidget();
 
     // String, int, or double data for each column in a row.
     // Passing -1 returns titles.
@@ -125,7 +124,6 @@ protected:
     Ui::TrafficTableDialog *ui;
 
     CaptureFile &cap_file_;
-    bool file_closed_;
     QString filter_;
     QMenu traffic_type_menu_;
     QPushButton *copy_bt_;

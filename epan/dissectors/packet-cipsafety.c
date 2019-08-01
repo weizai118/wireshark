@@ -2,6 +2,10 @@
  * Routines for CIP (Common Industrial Protocol) Safety dissection
  * CIP Safety Home: www.odva.org
  *
+ * This dissector includes items from:
+ *    CIP Volume 1: Common Industrial Protocol, Edition 3.24
+ *    CIP Volume 5: CIP Safety, Edition 2.17
+ *
  * Copyright 2011
  * Michael Mann <mmann@pyramidsolutions.com>
  *
@@ -94,14 +98,14 @@ static int hf_cip_ssupervisor_recover_data = -1;
 static int hf_cip_ssupervisor_perform_diag_data = -1;
 static int hf_cip_ssupervisor_configure_request_password = -1;
 static int hf_cip_ssupervisor_configure_request_tunid = -1;
-static int hf_cip_ssupervisor_configure_request_tunid_ssn_timestamp = -1;
-static int hf_cip_ssupervisor_configure_request_tunid_ssn_date = -1;
-static int hf_cip_ssupervisor_configure_request_tunid_ssn_time = -1;
+static int hf_cip_ssupervisor_configure_request_tunid_snn_timestamp = -1;
+static int hf_cip_ssupervisor_configure_request_tunid_snn_date = -1;
+static int hf_cip_ssupervisor_configure_request_tunid_snn_time = -1;
 static int hf_cip_ssupervisor_configure_request_tunid_macid = -1;
 static int hf_cip_ssupervisor_configure_request_ounid = -1;
-static int hf_cip_ssupervisor_configure_request_ounid_ssn_timestamp = -1;
-static int hf_cip_ssupervisor_configure_request_ounid_ssn_date = -1;
-static int hf_cip_ssupervisor_configure_request_ounid_ssn_time = -1;
+static int hf_cip_ssupervisor_configure_request_ounid_snn_timestamp = -1;
+static int hf_cip_ssupervisor_configure_request_ounid_snn_date = -1;
+static int hf_cip_ssupervisor_configure_request_ounid_snn_time = -1;
 static int hf_cip_ssupervisor_configure_request_ounid_macid = -1;
 static int hf_cip_ssupervisor_validate_configuration_sccrc = -1;
 static int hf_cip_ssupervisor_validate_configuration_scts_timestamp = -1;
@@ -113,18 +117,18 @@ static int hf_cip_ssupervisor_set_password_new_password = -1;
 static int hf_cip_ssupervisor_configure_lock_value = -1;
 static int hf_cip_ssupervisor_configure_lock_password = -1;
 static int hf_cip_ssupervisor_configure_lock_tunid = -1;
-static int hf_cip_ssupervisor_configure_lock_tunid_ssn_timestamp = -1;
-static int hf_cip_ssupervisor_configure_lock_tunid_ssn_date = -1;
-static int hf_cip_ssupervisor_configure_lock_tunid_ssn_time = -1;
+static int hf_cip_ssupervisor_configure_lock_tunid_snn_timestamp = -1;
+static int hf_cip_ssupervisor_configure_lock_tunid_snn_date = -1;
+static int hf_cip_ssupervisor_configure_lock_tunid_snn_time = -1;
 static int hf_cip_ssupervisor_configure_lock_tunid_macid = -1;
 static int hf_cip_ssupervisor_mode_change_value = -1;
 static int hf_cip_ssupervisor_mode_change_password = -1;
 static int hf_cip_ssupervisor_reset_type = -1;
 static int hf_cip_ssupervisor_reset_password = -1;
 static int hf_cip_ssupervisor_reset_tunid = -1;
-static int hf_cip_ssupervisor_reset_tunid_tunid_ssn_timestamp = -1;
-static int hf_cip_ssupervisor_reset_tunid_tunid_ssn_date = -1;
-static int hf_cip_ssupervisor_reset_tunid_tunid_ssn_time = -1;
+static int hf_cip_ssupervisor_reset_tunid_tunid_snn_timestamp = -1;
+static int hf_cip_ssupervisor_reset_tunid_tunid_snn_date = -1;
+static int hf_cip_ssupervisor_reset_tunid_tunid_snn_time = -1;
 static int hf_cip_ssupervisor_reset_tunid_macid = -1;
 static int hf_cip_ssupervisor_reset_attr_bitmap = -1;
 static int hf_cip_ssupervisor_reset_attr_bitmap_macid = -1;
@@ -138,14 +142,14 @@ static int hf_cip_ssupervisor_reset_attr_bitmap_extended = -1;
 static int hf_cip_ssupervisor_reset_password_data_size = -1;
 static int hf_cip_ssupervisor_reset_password_data = -1;
 static int hf_cip_ssupervisor_propose_tunid_tunid = -1;
-static int hf_cip_ssupervisor_propose_tunid_tunid_ssn_timestamp = -1;
-static int hf_cip_ssupervisor_propose_tunid_tunid_ssn_date = -1;
-static int hf_cip_ssupervisor_propose_tunid_tunid_ssn_time = -1;
+static int hf_cip_ssupervisor_propose_tunid_tunid_snn_timestamp = -1;
+static int hf_cip_ssupervisor_propose_tunid_tunid_snn_date = -1;
+static int hf_cip_ssupervisor_propose_tunid_tunid_snn_time = -1;
 static int hf_cip_ssupervisor_propose_tunid_tunid_macid = -1;
 static int hf_cip_ssupervisor_apply_tunid_tunid = -1;
-static int hf_cip_ssupervisor_apply_tunid_tunid_ssn_timestamp = -1;
-static int hf_cip_ssupervisor_apply_tunid_tunid_ssn_date = -1;
-static int hf_cip_ssupervisor_apply_tunid_tunid_ssn_time = -1;
+static int hf_cip_ssupervisor_apply_tunid_tunid_snn_timestamp = -1;
+static int hf_cip_ssupervisor_apply_tunid_tunid_snn_date = -1;
+static int hf_cip_ssupervisor_apply_tunid_tunid_snn_time = -1;
 static int hf_cip_ssupervisor_apply_tunid_tunid_macid = -1;
 
 static int hf_cip_ssupervisor_class_subclass = -1;
@@ -175,27 +179,27 @@ static int hf_cip_ssupervisor_scheduled_maintenance_expiration_timer = -1;
 static int hf_cip_ssupervisor_scheduled_maintenance_expiration_warning_enable = -1;
 static int hf_cip_ssupervisor_run_hours = -1;
 static int hf_cip_ssupervisor_configuration_lock = -1;
-static int hf_cip_ssupervisor_configuration_unid_ssn_timestamp = -1;
-static int hf_cip_ssupervisor_configuration_unid_ssn_date = -1;
-static int hf_cip_ssupervisor_configuration_unid_ssn_time = -1;
+static int hf_cip_ssupervisor_configuration_unid_snn_timestamp = -1;
+static int hf_cip_ssupervisor_configuration_unid_snn_date = -1;
+static int hf_cip_ssupervisor_configuration_unid_snn_time = -1;
 static int hf_cip_ssupervisor_configuration_unid_macid = -1;
-static int hf_cip_ssupervisor_safety_configuration_id_ssn_timestamp = -1;
-static int hf_cip_ssupervisor_safety_configuration_id_ssn_date = -1;
-static int hf_cip_ssupervisor_safety_configuration_id_ssn_time = -1;
-static int hf_cip_ssupervisor_safety_configuration_id_macid = -1;
-static int hf_cip_ssupervisor_target_unid_ssn_timestamp = -1;
-static int hf_cip_ssupervisor_target_unid_ssn_date = -1;
-static int hf_cip_ssupervisor_target_unid_ssn_time = -1;
+static int hf_cip_ssupervisor_safety_configuration_id_snn_timestamp = -1;
+static int hf_cip_ssupervisor_safety_configuration_id_snn_date = -1;
+static int hf_cip_ssupervisor_safety_configuration_id_snn_time = -1;
+static int hf_cip_ssupervisor_safety_configuration_id_sccrc = -1;
+static int hf_cip_ssupervisor_target_unid_snn_timestamp = -1;
+static int hf_cip_ssupervisor_target_unid_snn_date = -1;
+static int hf_cip_ssupervisor_target_unid_snn_time = -1;
 static int hf_cip_ssupervisor_target_unid_macid = -1;
 static int hf_cip_ssupervisor_cp_owners_num_entries = -1;
-static int hf_cip_ssupervisor_output_cp_owners_ocpunid_ssn_timestamp = -1;
-static int hf_cip_ssupervisor_output_cp_owners_ocpunid_ssn_date = -1;
-static int hf_cip_ssupervisor_output_cp_owners_ocpunid_ssn_time = -1;
+static int hf_cip_ssupervisor_output_cp_owners_ocpunid_snn_timestamp = -1;
+static int hf_cip_ssupervisor_output_cp_owners_ocpunid_snn_date = -1;
+static int hf_cip_ssupervisor_output_cp_owners_ocpunid_snn_time = -1;
 static int hf_cip_ssupervisor_output_cp_owners_ocpunid_macid = -1;
 static int hf_cip_ssupervisor_cp_owners_app_path_size = -1;
-static int hf_cip_ssupervisor_proposed_tunid_ssn_timestamp = -1;
-static int hf_cip_ssupervisor_proposed_tunid_ssn_date = -1;
-static int hf_cip_ssupervisor_proposed_tunid_ssn_time = -1;
+static int hf_cip_ssupervisor_proposed_tunid_snn_timestamp = -1;
+static int hf_cip_ssupervisor_proposed_tunid_snn_date = -1;
+static int hf_cip_ssupervisor_proposed_tunid_snn_time = -1;
 static int hf_cip_ssupervisor_proposed_tunid_macid = -1;
 static int hf_cip_ssupervisor_instance_subclass = -1;
 
@@ -245,37 +249,37 @@ static gint ett_cip_class_s_supervisor    = -1;
 static gint ett_ssupervisor_rrsc          = -1;
 static gint ett_ssupervisor_cmd_data      = -1;
 static gint ett_ssupervisor_propose_tunid = -1;
-static gint ett_ssupervisor_propose_tunid_ssn = -1;
+static gint ett_ssupervisor_propose_tunid_snn = -1;
 static gint ett_ssupervisor_configure_request_tunid = -1;
-static gint ett_ssupervisor_configure_request_tunid_ssn = -1;
+static gint ett_ssupervisor_configure_request_tunid_snn = -1;
 static gint ett_ssupervisor_configure_request_ounid = -1;
-static gint ett_ssupervisor_configure_request_ounid_ssn = -1;
+static gint ett_ssupervisor_configure_request_ounid_snn = -1;
 static gint ett_ssupervisor_configure_lock_tunid = -1;
-static gint ett_ssupervisor_configure_lock_tunid_ssn = -1;
+static gint ett_ssupervisor_configure_lock_tunid_snn = -1;
 static gint ett_ssupervisor_reset_tunid = -1;
-static gint ett_ssupervisor_reset_tunid_ssn = -1;
+static gint ett_ssupervisor_reset_tunid_snn = -1;
 static gint ett_ssupervisor_apply_tunid = -1;
-static gint ett_ssupervisor_apply_tunid_ssn = -1;
+static gint ett_ssupervisor_apply_tunid_snn = -1;
 static gint ett_exception_detail_common = -1;
 static gint ett_exception_detail_device = -1;
 static gint ett_exception_detail_manufacturer = -1;
 static gint ett_ssupervisor_configuration_unid = -1;
-static gint ett_ssupervisor_configuration_unid_ssn = -1;
-static gint ett_ssupervisor_safety_configuration_id = -1;
-static gint ett_ssupervisor_safety_configuration_id_ssn = -1;
+static gint ett_ssupervisor_configuration_unid_snn = -1;
 static gint ett_ssupervisor_target_unid = -1;
-static gint ett_ssupervisor_target_unid_ssn = -1;
+static gint ett_ssupervisor_target_unid_snn = -1;
 static gint ett_ssupervisor_output_cp_owners = -1;
 static gint ett_ssupervisor_output_cp_owners_ocpunid = -1;
-static gint ett_ssupervisor_output_cp_owners_ocpunid_ssn = -1;
+static gint ett_ssupervisor_output_cp_owners_ocpunid_snn = -1;
 static gint ett_ssupervisor_proposed_tunid = -1;
-static gint ett_ssupervisor_proposed_tunid_ssn = -1;
+static gint ett_ssupervisor_proposed_tunid_snn = -1;
 static gint ett_cip_ssupervisor_reset_attr_bitmap = -1;
 
 static gint ett_cip_class_s_validator     = -1;
 static gint ett_svalidator_rrsc           = -1;
 static gint ett_svalidator_cmd_data       = -1;
 static gint ett_svalidator_type           = -1;
+
+static const unit_name_string units_safety_128us = { " (128 us increment)", " (128 us increments)" };
 
 static expert_field ei_cipsafety_tbd2_not_complemented = EI_INIT;
 static expert_field ei_cipsafety_tbd_not_copied = EI_INIT;
@@ -324,22 +328,22 @@ typedef struct cip_safety_packet_data {
 #define MODE_BYTE_CRC_S5_BASE_MASK  0xE0
 #define MODE_BYTE_CRC_S5_EXTENDED_MASK  0x1F
 
-const value_string cipsafety_ssn_date_vals[8] = {
+const value_string cipsafety_snn_date_vals[8] = {
 
-   { 0,     "NULL SSN" },
+   { 0,     "NULL SNN" },
    { 1,     "Manual Setting - Backplane" },
    { 2,     "Manual Setting - ControlNet" },
    { 4,     "Manual Setting - EtherNet/IP" },
    { 5,     "Manual Setting - DeviceNet" },
    { 6,     "Manual Setting - SERCOS III" },
-   { 65535, "No SSN Set" },
+   { 65535, "No SNN Set" },
 
    { 0,     NULL }
 };
 
 static const true_false_string cip_safety_vals_active_idle = {
+   "Active",
    "Idle",
-   "Active"
 };
 
 /* Translate function to string - CIP Service codes for Safety Supervisor */
@@ -358,6 +362,8 @@ static const value_string cip_sc_vals_ssupervisor[] = {
    { SC_SSUPER_RESET_PASSWORD,         "Reset Password" },
    { SC_SSUPER_PROPOSE_TUNID,          "Propose TUNID" },
    { SC_SSUPER_APPLY_TUNID,            "Apply TUNID" },
+   { SC_SSUPER_PROPOSE_TUNID_LIST,     "Propose TUNID List" },
+   { SC_SSUPER_APPLY_TUNID_LIST,       "Apply TUNID List" },
 
    { 0,                       NULL }
 };
@@ -406,6 +412,8 @@ static const value_string cip_ssupervisor_device_status_type_vals[] = {
    { 6,        "Critical Fault"   },
    { 7,        "Configuring"   },
    { 8,        "Waiting for TUNID"   },
+   { 51,       "Waiting for TUNID with Torque Permitted" },
+   { 52,       "Executing with Torque Permitted" },
 
    { 0,        NULL          }
 };
@@ -444,25 +452,25 @@ static const value_string cip_svalidator_type_conn_type_vals[] = {
 
 void
 dissect_unid(tvbuff_t *tvb, packet_info *pinfo, int offset, proto_item *pi,
-             const char* ssn_name, int hf_ssn_timestamp,
-             int hf_ssn_date, int hf_ssn_time, int hf_macid, gint ett, gint ett_ssn)
+             const char* snn_name, int hf_snn_timestamp,
+             int hf_snn_date, int hf_snn_time, int hf_macid, gint ett, gint ett_snn)
 {
-   proto_tree *tree, *ssn_tree;
+   proto_tree *tree, *snn_tree;
 
    tree = proto_item_add_subtree(pi, ett);
 
-   ssn_tree = proto_tree_add_subtree(tree, tvb, offset, 6, ett_ssn, NULL, ssn_name);
-   dissect_cipsafety_ssn(ssn_tree, tvb, pinfo, offset, hf_ssn_timestamp, hf_ssn_date, hf_ssn_time);
+   snn_tree = proto_tree_add_subtree(tree, tvb, offset, 6, ett_snn, NULL, snn_name);
+   dissect_cipsafety_snn(snn_tree, tvb, pinfo, offset, hf_snn_timestamp, hf_snn_date, hf_snn_time);
 
    proto_tree_add_item(tree, hf_macid, tvb, offset+6, 4, ENC_LITTLE_ENDIAN);
 }
 
-void dissect_cipsafety_ssn(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo _U_, int offset,
+void dissect_cipsafety_snn(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo _U_, int offset,
                            int hf_real_datetime, int hf_date, int hf_time)
 {
    guint16 date;
 
-   date = tvb_get_letohs( tvb, offset);
+   date = tvb_get_letohs(tvb, offset+4);
 
    if ((date >= 11688) && (date <= 65534))
    {
@@ -472,8 +480,40 @@ void dissect_cipsafety_ssn(proto_tree *tree, tvbuff_t *tvb, packet_info *pinfo _
    else
    {
       /* Treated as UINT16 and UINT32 values */
-      proto_tree_add_item(tree, hf_date, tvb, offset, 2, ENC_LITTLE_ENDIAN);
-      proto_tree_add_item(tree, hf_time, tvb, offset+2, 4, ENC_LITTLE_ENDIAN);
+      proto_tree_add_item(tree, hf_time, tvb, offset, 4, ENC_LITTLE_ENDIAN);
+      proto_tree_add_item(tree, hf_date, tvb, offset + 4, 2, ENC_LITTLE_ENDIAN);
+   }
+}
+
+static void dissect_safety_supervisor_safety_reset(proto_tree* cmd_data_tree, tvbuff_t* tvb, int offset, packet_info* pinfo)
+{
+   guint32 reset_type;
+   proto_tree_add_item_ret_uint(cmd_data_tree, hf_cip_ssupervisor_reset_type, tvb, offset, 1, ENC_LITTLE_ENDIAN, &reset_type);
+
+   proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_reset_password, tvb, offset + 1, 16, ENC_NA);
+   proto_item* pi = proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_reset_tunid, tvb, offset + 17, 10, ENC_NA);
+   dissect_unid(tvb, pinfo, offset + 17, pi, "TUNID SNN",
+      hf_cip_ssupervisor_reset_tunid_tunid_snn_timestamp,
+      hf_cip_ssupervisor_reset_tunid_tunid_snn_date,
+      hf_cip_ssupervisor_reset_tunid_tunid_snn_time,
+      hf_cip_ssupervisor_reset_tunid_macid,
+      ett_ssupervisor_reset_tunid,
+      ett_ssupervisor_reset_tunid_snn);
+
+   /* Attribute bitmap only included on Reset Type 2 */
+   if (reset_type == 2)
+   {
+      pi = proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_reset_attr_bitmap, tvb, offset + 27, 1, ENC_LITTLE_ENDIAN);
+
+      proto_tree* bitmap_tree = proto_item_add_subtree(pi, ett_cip_ssupervisor_reset_attr_bitmap);
+      proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_macid, tvb, offset + 27, 1, ENC_LITTLE_ENDIAN);
+      proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_baudrate, tvb, offset + 27, 1, ENC_LITTLE_ENDIAN);
+      proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_tunid, tvb, offset + 27, 1, ENC_LITTLE_ENDIAN);
+      proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_password, tvb, offset + 27, 1, ENC_LITTLE_ENDIAN);
+      proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_cfunid, tvb, offset + 27, 1, ENC_LITTLE_ENDIAN);
+      proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_ocpunid, tvb, offset + 27, 1, ENC_LITTLE_ENDIAN);
+      proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_reserved, tvb, offset + 27, 1, ENC_LITTLE_ENDIAN);
+      proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_extended, tvb, offset + 27, 1, ENC_LITTLE_ENDIAN);
    }
 }
 
@@ -487,7 +527,7 @@ dissect_cip_s_supervisor_data( proto_tree *item_tree,
                                tvbuff_t *tvb, int offset, int item_length, packet_info *pinfo )
 {
    proto_item                *pi, *rrsc_item;
-   proto_tree                *rrsc_tree, *cmd_data_tree, *bitmap_tree;
+   proto_tree                *rrsc_tree, *cmd_data_tree;
    int                        req_path_size;
    int                        temp_data;
    guint8                     service, gen_status, add_stat_size;
@@ -525,14 +565,14 @@ dissect_cip_s_supervisor_data( proto_tree *item_tree,
          cmd_data_tree = proto_tree_add_subtree( item_tree, tvb, offset+4+add_stat_size,
                          item_length-4-add_stat_size, ett_ssupervisor_cmd_data, NULL, "Command Specific Data" );
 
-         if( gen_status == CI_GRC_SUCCESS || gen_status == CI_GRC_SERVICE_ERROR )
+         if( gen_status == CI_GRC_SUCCESS )
          {
             switch (service & CIP_SC_MASK)
             {
             case SC_SSUPER_VALIDATE_CONFIGURATION:
                proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_validate_configuration_sccrc,
                          tvb, offset+4+add_stat_size, 4, ENC_LITTLE_ENDIAN);
-               dissect_cipsafety_ssn(cmd_data_tree,
+               dissect_cipsafety_snn(cmd_data_tree,
                          tvb, pinfo, offset+4+add_stat_size+4,
                          hf_cip_ssupervisor_validate_configuration_scts_timestamp,
                          hf_cip_ssupervisor_validate_configuration_scts_date,
@@ -587,27 +627,27 @@ dissect_cip_s_supervisor_data( proto_tree *item_tree,
                          tvb, offset+2+req_path_size, 16, ENC_NA);
             pi = proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_configure_request_tunid,
                          tvb, offset+2+req_path_size+16, 10, ENC_NA);
-            dissect_unid(tvb, pinfo, offset+2+req_path_size+16, pi, "TUNID SSN",
-                         hf_cip_ssupervisor_configure_request_tunid_ssn_timestamp,
-                         hf_cip_ssupervisor_configure_request_tunid_ssn_date,
-                         hf_cip_ssupervisor_configure_request_tunid_ssn_time,
+            dissect_unid(tvb, pinfo, offset+2+req_path_size+16, pi, "TUNID SNN",
+                         hf_cip_ssupervisor_configure_request_tunid_snn_timestamp,
+                         hf_cip_ssupervisor_configure_request_tunid_snn_date,
+                         hf_cip_ssupervisor_configure_request_tunid_snn_time,
                          hf_cip_ssupervisor_configure_request_tunid_macid,
                          ett_ssupervisor_configure_request_tunid,
-                         ett_ssupervisor_configure_request_tunid_ssn);
+                         ett_ssupervisor_configure_request_tunid_snn);
             pi = proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_configure_request_ounid,
                                      tvb, offset+2+req_path_size+26, 10, ENC_NA);
-            dissect_unid(tvb, pinfo, offset+2+req_path_size+16, pi, "OUNID SSN",
-                         hf_cip_ssupervisor_configure_request_ounid_ssn_timestamp,
-                         hf_cip_ssupervisor_configure_request_ounid_ssn_date,
-                         hf_cip_ssupervisor_configure_request_ounid_ssn_time,
+            dissect_unid(tvb, pinfo, offset+2+req_path_size+16, pi, "OUNID SNN",
+                         hf_cip_ssupervisor_configure_request_ounid_snn_timestamp,
+                         hf_cip_ssupervisor_configure_request_ounid_snn_date,
+                         hf_cip_ssupervisor_configure_request_ounid_snn_time,
                          hf_cip_ssupervisor_configure_request_ounid_macid,
                          ett_ssupervisor_configure_request_ounid,
-                         ett_ssupervisor_configure_request_ounid_ssn);
+                         ett_ssupervisor_configure_request_ounid_snn);
             break;
          case SC_SSUPER_VALIDATE_CONFIGURATION:
             proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_validate_configuration_sccrc,
                          tvb, offset+2+req_path_size, 4, ENC_LITTLE_ENDIAN);
-            dissect_cipsafety_ssn(cmd_data_tree, tvb, pinfo, offset+2+req_path_size+4,
+            dissect_cipsafety_snn(cmd_data_tree, tvb, pinfo, offset+2+req_path_size+4,
                          hf_cip_ssupervisor_validate_configuration_scts_timestamp,
                          hf_cip_ssupervisor_validate_configuration_scts_date,
                          hf_cip_ssupervisor_validate_configuration_scts_time);
@@ -620,63 +660,27 @@ dissect_cip_s_supervisor_data( proto_tree *item_tree,
             break;
          case SC_SSUPER_CONFIGURATION_LOCK:
             proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_configure_lock_value,
-                         tvb, offset+2+req_path_size+1, 1, ENC_LITTLE_ENDIAN);
+                         tvb, offset+2+req_path_size, 1, ENC_LITTLE_ENDIAN);
             proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_configure_lock_password,
                          tvb, offset+2+req_path_size+1, 16, ENC_NA);
             pi = proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_configure_lock_tunid,
                          tvb, offset+2+req_path_size+17, 10, ENC_NA);
-            dissect_unid(tvb, pinfo, offset+2+req_path_size+17, pi, "TUNID SSN",
-                         hf_cip_ssupervisor_configure_lock_tunid_ssn_timestamp,
-                         hf_cip_ssupervisor_configure_lock_tunid_ssn_date,
-                         hf_cip_ssupervisor_configure_lock_tunid_ssn_time,
+            dissect_unid(tvb, pinfo, offset+2+req_path_size+17, pi, "TUNID SNN",
+                         hf_cip_ssupervisor_configure_lock_tunid_snn_timestamp,
+                         hf_cip_ssupervisor_configure_lock_tunid_snn_date,
+                         hf_cip_ssupervisor_configure_lock_tunid_snn_time,
                          hf_cip_ssupervisor_configure_lock_tunid_macid,
                          ett_ssupervisor_configure_lock_tunid,
-                         ett_ssupervisor_configure_lock_tunid_ssn);
+                         ett_ssupervisor_configure_lock_tunid_snn);
             break;
          case SC_SSUPER_MODE_CHANGE:
             proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_mode_change_value,
-                         tvb, offset+2+req_path_size+1, 1, ENC_LITTLE_ENDIAN);
+                         tvb, offset+2+req_path_size, 1, ENC_LITTLE_ENDIAN);
             proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_mode_change_password,
                          tvb, offset+2+req_path_size+1, 16, ENC_NA);
             break;
          case SC_SSUPER_SAFETY_RESET:
-            proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_reset_type,
-                         tvb, offset+2+req_path_size+1, 1, ENC_LITTLE_ENDIAN);
-            temp_data = tvb_get_guint8( tvb, offset+2+req_path_size+1 );
-            proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_reset_password,
-                         tvb, offset+2+req_path_size+1, 16, ENC_NA);
-            pi = proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_reset_tunid,
-                         tvb, offset+2+req_path_size+17, 10, ENC_NA);
-            dissect_unid(tvb, pinfo, offset+2+req_path_size+17, pi, "TUNID SSN",
-                         hf_cip_ssupervisor_reset_tunid_tunid_ssn_timestamp,
-                         hf_cip_ssupervisor_reset_tunid_tunid_ssn_date,
-                         hf_cip_ssupervisor_reset_tunid_tunid_ssn_time,
-                         hf_cip_ssupervisor_reset_tunid_macid,
-                         ett_ssupervisor_reset_tunid,
-                         ett_ssupervisor_reset_tunid_ssn);
-            /* Attribute bitmap only included on Reset Type 2 */
-            if (temp_data == 2)
-            {
-               pi = proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_reset_attr_bitmap,
-                         tvb, offset+2+req_path_size+27, 1, ENC_LITTLE_ENDIAN);
-               bitmap_tree = proto_item_add_subtree(pi, ett_cip_ssupervisor_reset_attr_bitmap);
-               proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_macid,
-                         tvb, offset+2+req_path_size+27, 1, ENC_LITTLE_ENDIAN);
-               proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_baudrate,
-                         tvb, offset+2+req_path_size+27, 1, ENC_LITTLE_ENDIAN);
-               proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_tunid,
-                         tvb, offset+2+req_path_size+27, 1, ENC_LITTLE_ENDIAN);
-               proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_password,
-                         tvb, offset+2+req_path_size+27, 1, ENC_LITTLE_ENDIAN);
-               proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_cfunid,
-                         tvb, offset+2+req_path_size+27, 1, ENC_LITTLE_ENDIAN);
-               proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_ocpunid,
-                         tvb, offset+2+req_path_size+27, 1, ENC_LITTLE_ENDIAN);
-               proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_reserved,
-                         tvb, offset+2+req_path_size+27, 1, ENC_LITTLE_ENDIAN);
-               proto_tree_add_item(bitmap_tree, hf_cip_ssupervisor_reset_attr_bitmap_extended,
-                         tvb, offset+2+req_path_size+27, 1, ENC_LITTLE_ENDIAN);
-            }
+            dissect_safety_supervisor_safety_reset(cmd_data_tree, tvb, offset + 2 + req_path_size, pinfo);
             break;
          case SC_SSUPER_RESET_PASSWORD:
             proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_reset_password_data_size,
@@ -688,24 +692,24 @@ dissect_cip_s_supervisor_data( proto_tree *item_tree,
          case SC_SSUPER_PROPOSE_TUNID:
             pi = proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_propose_tunid_tunid,
                          tvb, offset+2+req_path_size, 10, ENC_NA);
-            dissect_unid(tvb, pinfo, offset+2+req_path_size, pi, "TUNID SSN",
-                         hf_cip_ssupervisor_propose_tunid_tunid_ssn_timestamp,
-                         hf_cip_ssupervisor_propose_tunid_tunid_ssn_date,
-                         hf_cip_ssupervisor_propose_tunid_tunid_ssn_time,
+            dissect_unid(tvb, pinfo, offset+2+req_path_size, pi, "TUNID SNN",
+                         hf_cip_ssupervisor_propose_tunid_tunid_snn_timestamp,
+                         hf_cip_ssupervisor_propose_tunid_tunid_snn_date,
+                         hf_cip_ssupervisor_propose_tunid_tunid_snn_time,
                          hf_cip_ssupervisor_propose_tunid_tunid_macid,
                          ett_ssupervisor_propose_tunid,
-                         ett_ssupervisor_propose_tunid_ssn);
+                         ett_ssupervisor_propose_tunid_snn);
             break;
          case SC_SSUPER_APPLY_TUNID:
             pi = proto_tree_add_item(cmd_data_tree, hf_cip_ssupervisor_apply_tunid_tunid,
                          tvb, offset+2+req_path_size, 10, ENC_NA);
-            dissect_unid(tvb, pinfo, offset+2+req_path_size, pi, "TUNID SSN",
-                         hf_cip_ssupervisor_apply_tunid_tunid_ssn_timestamp,
-                         hf_cip_ssupervisor_apply_tunid_tunid_ssn_date,
-                         hf_cip_ssupervisor_apply_tunid_tunid_ssn_time,
+            dissect_unid(tvb, pinfo, offset+2+req_path_size, pi, "TUNID SNN",
+                         hf_cip_ssupervisor_apply_tunid_tunid_snn_timestamp,
+                         hf_cip_ssupervisor_apply_tunid_tunid_snn_date,
+                         hf_cip_ssupervisor_apply_tunid_tunid_snn_time,
                          hf_cip_ssupervisor_apply_tunid_tunid_macid,
                          ett_ssupervisor_apply_tunid,
-                         ett_ssupervisor_apply_tunid_ssn);
+                         ett_ssupervisor_apply_tunid_snn);
             break;
          default:
             proto_tree_add_item(cmd_data_tree, hf_cip_data,
@@ -797,13 +801,13 @@ static int dissect_s_supervisor_configuration_unid(packet_info *pinfo, proto_tre
       return total_len;
    }
 
-   dissect_unid(tvb, pinfo, offset, item, "CFUNID SSN",
-                  hf_cip_ssupervisor_configuration_unid_ssn_timestamp,
-                  hf_cip_ssupervisor_configuration_unid_ssn_date,
-                  hf_cip_ssupervisor_configuration_unid_ssn_time,
+   dissect_unid(tvb, pinfo, offset, item, "CFUNID SNN",
+                  hf_cip_ssupervisor_configuration_unid_snn_timestamp,
+                  hf_cip_ssupervisor_configuration_unid_snn_date,
+                  hf_cip_ssupervisor_configuration_unid_snn_time,
                   hf_cip_ssupervisor_configuration_unid_macid,
                   ett_ssupervisor_configuration_unid,
-                  ett_ssupervisor_configuration_unid_ssn);
+                  ett_ssupervisor_configuration_unid_snn);
    return 10;
 }
 
@@ -816,13 +820,13 @@ static int dissect_s_supervisor_safety_configuration_id(packet_info *pinfo, prot
       return total_len;
    }
 
-   dissect_unid(tvb, pinfo, offset, item, "SCID SSN",
-                  hf_cip_ssupervisor_safety_configuration_id_ssn_timestamp,
-                  hf_cip_ssupervisor_safety_configuration_id_ssn_date,
-                  hf_cip_ssupervisor_safety_configuration_id_ssn_time,
-                  hf_cip_ssupervisor_safety_configuration_id_macid,
-                  ett_ssupervisor_safety_configuration_id,
-                  ett_ssupervisor_safety_configuration_id_ssn);
+   proto_tree_add_item(tree, hf_cip_ssupervisor_safety_configuration_id_sccrc, tvb, offset, 4, ENC_LITTLE_ENDIAN);
+
+   dissect_cipsafety_snn(tree, tvb, pinfo, offset + 4,
+      hf_cip_ssupervisor_safety_configuration_id_snn_timestamp,
+      hf_cip_ssupervisor_safety_configuration_id_snn_date,
+      hf_cip_ssupervisor_safety_configuration_id_snn_time);
+
    return 10;
 }
 
@@ -835,13 +839,13 @@ static int dissect_s_supervisor_target_unid(packet_info *pinfo, proto_tree *tree
       return total_len;
    }
 
-   dissect_unid(tvb, pinfo, offset, item, "TUNID SSN",
-                  hf_cip_ssupervisor_target_unid_ssn_timestamp,
-                  hf_cip_ssupervisor_target_unid_ssn_date,
-                  hf_cip_ssupervisor_target_unid_ssn_time,
+   dissect_unid(tvb, pinfo, offset, item, "TUNID SNN",
+                  hf_cip_ssupervisor_target_unid_snn_timestamp,
+                  hf_cip_ssupervisor_target_unid_snn_date,
+                  hf_cip_ssupervisor_target_unid_snn_time,
                   hf_cip_ssupervisor_target_unid_macid,
                   ett_ssupervisor_target_unid,
-                  ett_ssupervisor_target_unid_ssn);
+                  ett_ssupervisor_target_unid_snn);
    return 10;
 }
 
@@ -876,13 +880,13 @@ static int dissect_s_supervisor_output_connection_point_owners(packet_info *pinf
             return total_len;
          }
 
-         dissect_unid(tvb, pinfo, offset+attr_len, entry_item, "OCPUNID SSN",
-                         hf_cip_ssupervisor_output_cp_owners_ocpunid_ssn_timestamp,
-                         hf_cip_ssupervisor_output_cp_owners_ocpunid_ssn_date,
-                         hf_cip_ssupervisor_output_cp_owners_ocpunid_ssn_time,
+         dissect_unid(tvb, pinfo, offset+attr_len, entry_item, "OCPUNID SNN",
+                         hf_cip_ssupervisor_output_cp_owners_ocpunid_snn_timestamp,
+                         hf_cip_ssupervisor_output_cp_owners_ocpunid_snn_date,
+                         hf_cip_ssupervisor_output_cp_owners_ocpunid_snn_time,
                          hf_cip_ssupervisor_output_cp_owners_ocpunid_macid,
                          ett_ssupervisor_output_cp_owners_ocpunid,
-                         ett_ssupervisor_output_cp_owners_ocpunid_ssn);
+                         ett_ssupervisor_output_cp_owners_ocpunid_snn);
          attr_len += 10;
 
          proto_tree_add_item(entry_tree, hf_cip_ssupervisor_cp_owners_app_path_size,
@@ -915,13 +919,13 @@ static int dissect_s_supervisor_proposed_tunid(packet_info *pinfo, proto_tree *t
       return total_len;
    }
 
-   dissect_unid(tvb, pinfo, offset, item, "Proposed TUNID SSN",
-                  hf_cip_ssupervisor_proposed_tunid_ssn_timestamp,
-                  hf_cip_ssupervisor_proposed_tunid_ssn_date,
-                  hf_cip_ssupervisor_proposed_tunid_ssn_time,
+   dissect_unid(tvb, pinfo, offset, item, "Proposed TUNID SNN",
+                  hf_cip_ssupervisor_proposed_tunid_snn_timestamp,
+                  hf_cip_ssupervisor_proposed_tunid_snn_date,
+                  hf_cip_ssupervisor_proposed_tunid_snn_time,
                   hf_cip_ssupervisor_proposed_tunid_macid,
                   ett_ssupervisor_proposed_tunid,
-                  ett_ssupervisor_proposed_tunid_ssn);
+                  ett_ssupervisor_proposed_tunid_snn);
    return 10;
 }
 
@@ -1122,7 +1126,7 @@ dissect_cip_s_validator_data( proto_tree *item_tree,
          cmd_data_tree = proto_tree_add_subtree( item_tree, tvb, offset+4+add_stat_size, item_length-4-add_stat_size,
                                 ett_ssupervisor_cmd_data, &pi, "Command Specific Data" );
 
-         if( gen_status == CI_GRC_SUCCESS || gen_status == CI_GRC_SERVICE_ERROR )
+         if( gen_status == CI_GRC_SUCCESS )
          {
             /* Success responses */
             if (((service & CIP_SC_MASK) == SC_GET_ATT_ALL) &&
@@ -1477,8 +1481,7 @@ dissect_cip_safety_data( proto_tree *tree, proto_item *item, tvbuff_t *tvb, int 
    proto_item *complement_item, *crc_s5_item, *crc_s5_status_item;
    gboolean short_format = TRUE;
    gboolean compute_crc = ((safety_info != NULL) && (safety_info->compute_crc == TRUE));
-   cip_connection_triad_t connection_triad;
-   memset(&connection_triad, 0, sizeof(connection_triad));
+   cip_connection_triad_t connection_triad = {0};
 
    /* Make entries in Protocol column and Info column on summary display */
    col_set_str(pinfo->cinfo, COL_PROTOCOL, "CIP Safety");
@@ -1574,7 +1577,7 @@ dissect_cip_safety_data( proto_tree *tree, proto_item *item, tvbuff_t *tvb, int 
          {
             crc_s5_status_item = proto_tree_add_uint(tree, hf_cipsafety_crc_s5_status, tvb, 5, 0, PROTO_CHECKSUM_E_UNVERIFIED);
          }
-         PROTO_ITEM_SET_GENERATED(crc_s5_status_item);
+         proto_item_set_generated(crc_s5_status_item);
 
          break;
       }
@@ -1755,7 +1758,7 @@ dissect_cip_safety_data( proto_tree *tree, proto_item *item, tvbuff_t *tvb, int 
          if (compute_crc)
          {
             /* Determine if packet timestamp results in rollover count increment */
-            if (!pinfo->fd->flags.visited)
+            if (!pinfo->fd->visited)
             {
                if ((timestamp != 0) && (timestamp < safety_info->eip_conn_info->safety.running_timestamp_value))
                {
@@ -1817,7 +1820,7 @@ dissect_cip_safety_data( proto_tree *tree, proto_item *item, tvbuff_t *tvb, int 
             {
                crc_s5_status_item = proto_tree_add_uint(tree, hf_cipsafety_crc_s5_status, tvb, io_data_size+5, 0, PROTO_CHECKSUM_E_UNVERIFIED);
             }
-            PROTO_ITEM_SET_GENERATED(crc_s5_status_item);
+            proto_item_set_generated(crc_s5_status_item);
 
             if (multicast)
             {
@@ -1844,7 +1847,7 @@ dissect_cip_safety_data( proto_tree *tree, proto_item *item, tvbuff_t *tvb, int 
             if (compute_crc)
             {
                /* Determine if packet timestamp results in rollover count increment */
-               if (!pinfo->fd->flags.visited)
+               if (!pinfo->fd->visited)
                {
                   if ((timestamp != 0) && (timestamp < safety_info->eip_conn_info->safety.running_timestamp_value))
                   {
@@ -1919,7 +1922,7 @@ dissect_cip_safety_data( proto_tree *tree, proto_item *item, tvbuff_t *tvb, int 
             {
                crc_s5_status_item = proto_tree_add_uint(tree, hf_cipsafety_crc_s5_status, tvb, (io_data_size*2)+7, 0, PROTO_CHECKSUM_E_UNVERIFIED);
             }
-            PROTO_ITEM_SET_GENERATED(crc_s5_status_item);
+            proto_item_set_generated(crc_s5_status_item);
 
             if (multicast)
             {
@@ -1958,7 +1961,7 @@ dissect_cipsafety(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* dat
 static int dissect_cipsafety_base_data(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_)
 {
    cip_safety_info_t safety_info;
-   enip_conn_val_t eip_conn_info;
+   enip_conn_val_t eip_conn_info = {0};
    safety_info.eip_conn_info = &eip_conn_info;
    safety_info.compute_crc = FALSE;
 
@@ -1973,7 +1976,7 @@ static int dissect_cipsafety_base_data(tvbuff_t *tvb, packet_info *pinfo, proto_
 static int dissect_cipsafety_extended_data(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_)
 {
    cip_safety_info_t safety_info;
-   enip_conn_val_t eip_conn_info;
+   enip_conn_val_t eip_conn_info = {0};
    safety_info.eip_conn_info = &eip_conn_info;
    safety_info.compute_crc = FALSE;
 
@@ -1988,7 +1991,7 @@ static int dissect_cipsafety_extended_data(tvbuff_t *tvb, packet_info *pinfo, pr
 static int dissect_cipsafety_base_time_coord(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_)
 {
    cip_safety_info_t safety_info;
-   enip_conn_val_t eip_conn_info;
+   enip_conn_val_t eip_conn_info = {0};
    safety_info.eip_conn_info = &eip_conn_info;
    safety_info.compute_crc = FALSE;
 
@@ -2003,7 +2006,7 @@ static int dissect_cipsafety_base_time_coord(tvbuff_t *tvb, packet_info *pinfo, 
 static int dissect_cipsafety_extended_time_coord(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_)
 {
    cip_safety_info_t safety_info;
-   enip_conn_val_t eip_conn_info;
+   enip_conn_val_t eip_conn_info = {0};
    safety_info.eip_conn_info = &eip_conn_info;
    safety_info.compute_crc = FALSE;
 
@@ -2128,8 +2131,8 @@ proto_register_cipsafety(void)
       },
 
       { &hf_cipsafety_data,
-        { "Data", "enip.connection_transport_data",
-          FT_BYTES, BASE_NONE, NULL, 0, "Connection Transport Data", HFILL }
+        { "Data", "cipsafety.data",
+          FT_BYTES, BASE_NONE, NULL, 0, NULL, HFILL }
       },
       { &hf_cipsafety_mode_byte,
         { "Mode Byte", "cipsafety.mode_byte",
@@ -2281,7 +2284,7 @@ proto_register_cipsafety(void)
       },
       { &hf_cipsafety_complement_data,
         { "Complement Data", "cipsafety.complement_data",
-          FT_BYTES, BASE_NONE, NULL, 0, "Connection Transport Data", HFILL }
+          FT_BYTES, BASE_NONE, NULL, 0, NULL, HFILL }
       },
 
       { &hf_cip_sercosiii_link_snn,
@@ -2335,16 +2338,16 @@ proto_register_cipsafety(void)
         { "Target UNID", "cipsafety.ssupervisor.configure_request.tunid",
           FT_BYTES, BASE_NONE, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_configure_request_tunid_ssn_timestamp,
-        { "TUNID SSN Timestamp", "cipsafety.ssupervisor.configure_request.tunid.ssn.timestamp",
+      { &hf_cip_ssupervisor_configure_request_tunid_snn_timestamp,
+        { "TUNID SNN Timestamp", "cipsafety.ssupervisor.configure_request.tunid.snn.timestamp",
           FT_ABSOLUTE_TIME, ABSOLUTE_TIME_UTC, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_configure_request_tunid_ssn_date,
-        { "TUNID SSN  (Manual) Date", "cipsafety.ssupervisor.configure_request.tunid.ssn.date",
-          FT_UINT16, BASE_HEX, VALS(cipsafety_ssn_date_vals), 0, NULL, HFILL }
+      { &hf_cip_ssupervisor_configure_request_tunid_snn_date,
+        { "TUNID SNN (Manual) Date", "cipsafety.ssupervisor.configure_request.tunid.snn.date",
+          FT_UINT16, BASE_HEX, VALS(cipsafety_snn_date_vals), 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_configure_request_tunid_ssn_time,
-        { "TUNID SSN  (Manual) Time", "cipsafety.ssupervisor.configure_request.tunid.ssn.time",
+      { &hf_cip_ssupervisor_configure_request_tunid_snn_time,
+        { "TUNID SNN (Manual) Time", "cipsafety.ssupervisor.configure_request.tunid.snn.time",
           FT_UINT32, BASE_HEX, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_ssupervisor_configure_request_tunid_macid,
@@ -2355,16 +2358,16 @@ proto_register_cipsafety(void)
         { "Originator UNID", "cipsafety.ssupervisor.configure_request.ounid",
           FT_BYTES, BASE_NONE, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_configure_request_ounid_ssn_timestamp,
-        { "OUNID SSN Timestamp", "cipsafety.ssupervisor.configure_request.ounid.ssn.timestamp",
+      { &hf_cip_ssupervisor_configure_request_ounid_snn_timestamp,
+        { "OUNID SNN Timestamp", "cipsafety.ssupervisor.configure_request.ounid.snn.timestamp",
           FT_ABSOLUTE_TIME, ABSOLUTE_TIME_UTC, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_configure_request_ounid_ssn_date,
-        { "OUNID SSN  (Manual) Date", "cipsafety.ssupervisor.configure_request.ounid.ssn.date",
-          FT_UINT16, BASE_HEX, VALS(cipsafety_ssn_date_vals), 0, NULL, HFILL }
+      { &hf_cip_ssupervisor_configure_request_ounid_snn_date,
+        { "OUNID SNN (Manual) Date", "cipsafety.ssupervisor.configure_request.ounid.snn.date",
+          FT_UINT16, BASE_HEX, VALS(cipsafety_snn_date_vals), 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_configure_request_ounid_ssn_time,
-        { "OUNID SSN  (Manual) Time", "cipsafety.ssupervisor.configure_request.ounid.ssn.time",
+      { &hf_cip_ssupervisor_configure_request_ounid_snn_time,
+        { "OUNID SNN (Manual) Time", "cipsafety.ssupervisor.configure_request.ounid.snn.time",
           FT_UINT32, BASE_HEX, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_ssupervisor_configure_request_ounid_macid,
@@ -2381,7 +2384,7 @@ proto_register_cipsafety(void)
       },
       { &hf_cip_ssupervisor_validate_configuration_scts_date,
         { "SCTS (Manual) Date", "cipsafety.ssupervisor.validate_configuration.scts.date",
-          FT_UINT16, BASE_HEX, VALS(cipsafety_ssn_date_vals), 0, NULL, HFILL }
+          FT_UINT16, BASE_HEX, VALS(cipsafety_snn_date_vals), 0, NULL, HFILL }
       },
       { &hf_cip_ssupervisor_validate_configuration_scts_time,
         { "SCTS (Manual) Time", "cipsafety.ssupervisor.validate_configuration.scts.time",
@@ -2411,16 +2414,16 @@ proto_register_cipsafety(void)
         { "Target UNID", "cipsafety.ssupervisor.configure_lock.tunid",
           FT_BYTES, BASE_NONE, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_configure_lock_tunid_ssn_timestamp,
-        { "TUNID SSN Timestamp", "cipsafety.ssupervisor.configure_lock.tunid.ssn.timestamp",
+      { &hf_cip_ssupervisor_configure_lock_tunid_snn_timestamp,
+        { "TUNID SNN Timestamp", "cipsafety.ssupervisor.configure_lock.tunid.snn.timestamp",
           FT_ABSOLUTE_TIME, ABSOLUTE_TIME_UTC, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_configure_lock_tunid_ssn_date,
-        { "TUNID SSN  (Manual) Date", "cipsafety.ssupervisor.configure_lock.tunid.ssn.date",
-          FT_UINT16, BASE_HEX, VALS(cipsafety_ssn_date_vals), 0, NULL, HFILL }
+      { &hf_cip_ssupervisor_configure_lock_tunid_snn_date,
+        { "TUNID SNN (Manual) Date", "cipsafety.ssupervisor.configure_lock.tunid.snn.date",
+          FT_UINT16, BASE_HEX, VALS(cipsafety_snn_date_vals), 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_configure_lock_tunid_ssn_time,
-        { "TUNID SSN  (Manual) Time", "cipsafety.ssupervisor.configure_lock.tunid.ssn.time",
+      { &hf_cip_ssupervisor_configure_lock_tunid_snn_time,
+        { "TUNID SNN (Manual) Time", "cipsafety.ssupervisor.configure_lock.tunid.snn.time",
           FT_UINT32, BASE_HEX, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_ssupervisor_configure_lock_tunid_macid,
@@ -2447,16 +2450,16 @@ proto_register_cipsafety(void)
         { "Target UNID", "cipsafety.ssupervisor.reset.tunid",
           FT_BYTES, BASE_NONE, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_reset_tunid_tunid_ssn_timestamp,
-        { "TUNID SSN Timestamp", "cipsafety.ssupervisor.reset.tunid.ssn.timestamp",
+      { &hf_cip_ssupervisor_reset_tunid_tunid_snn_timestamp,
+        { "TUNID SNN Timestamp", "cipsafety.ssupervisor.reset.tunid.snn.timestamp",
           FT_ABSOLUTE_TIME, ABSOLUTE_TIME_UTC, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_reset_tunid_tunid_ssn_date,
-        { "TUNID SSN  (Manual) Date", "cipsafety.ssupervisor.reset.tunid.ssn.date",
-          FT_UINT16, BASE_HEX, VALS(cipsafety_ssn_date_vals), 0, NULL, HFILL }
+      { &hf_cip_ssupervisor_reset_tunid_tunid_snn_date,
+        { "TUNID SNN (Manual) Date", "cipsafety.ssupervisor.reset.tunid.snn.date",
+          FT_UINT16, BASE_HEX, VALS(cipsafety_snn_date_vals), 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_reset_tunid_tunid_ssn_time,
-        { "TUNID SSN  (Manual) Time", "cipsafety.ssupervisor.reset.tunid.ssn.time",
+      { &hf_cip_ssupervisor_reset_tunid_tunid_snn_time,
+        { "TUNID SNN (Manual) Time", "cipsafety.ssupervisor.reset.tunid.snn.time",
           FT_UINT32, BASE_HEX, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_ssupervisor_reset_tunid_macid,
@@ -2511,16 +2514,16 @@ proto_register_cipsafety(void)
         { "Target UNID", "cipsafety.ssupervisor.propose_tunid.tunid",
           FT_BYTES, BASE_NONE, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_propose_tunid_tunid_ssn_timestamp,
-        { "TUNID SSN Timestamp", "cipsafety.ssupervisor.propose_tunid.tunid.ssn.timestamp",
+      { &hf_cip_ssupervisor_propose_tunid_tunid_snn_timestamp,
+        { "TUNID SNN Timestamp", "cipsafety.ssupervisor.propose_tunid.tunid.snn.timestamp",
           FT_ABSOLUTE_TIME, ABSOLUTE_TIME_UTC, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_propose_tunid_tunid_ssn_date,
-        { "TUNID SSN  (Manual) Date", "cipsafety.ssupervisor.propose_tunid.tunid.ssn.date",
-          FT_UINT16, BASE_HEX, VALS(cipsafety_ssn_date_vals), 0, NULL, HFILL }
+      { &hf_cip_ssupervisor_propose_tunid_tunid_snn_date,
+        { "TUNID SNN (Manual) Date", "cipsafety.ssupervisor.propose_tunid.tunid.snn.date",
+          FT_UINT16, BASE_HEX, VALS(cipsafety_snn_date_vals), 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_propose_tunid_tunid_ssn_time,
-        { "TUNID SSN  (Manual) Time", "cipsafety.ssupervisor.propose_tunid.tunid.ssn.time",
+      { &hf_cip_ssupervisor_propose_tunid_tunid_snn_time,
+        { "TUNID SNN (Manual) Time", "cipsafety.ssupervisor.propose_tunid.tunid.snn.time",
           FT_UINT32, BASE_HEX, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_ssupervisor_propose_tunid_tunid_macid,
@@ -2531,16 +2534,16 @@ proto_register_cipsafety(void)
         { "Target UNID", "cipsafety.ssupervisor.apply_tunid.tunid",
           FT_BYTES, BASE_NONE, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_apply_tunid_tunid_ssn_timestamp,
-        { "TUNID SSN Timestamp", "cipsafety.ssupervisor.apply_tunid.tunid.ssn.timestamp",
+      { &hf_cip_ssupervisor_apply_tunid_tunid_snn_timestamp,
+        { "TUNID SNN Timestamp", "cipsafety.ssupervisor.apply_tunid.tunid.snn.timestamp",
           FT_ABSOLUTE_TIME, ABSOLUTE_TIME_UTC, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_apply_tunid_tunid_ssn_date,
-        { "TUNID SSN  (Manual) Date", "cipsafety.ssupervisor.apply_tunid.tunid.ssn.date",
-          FT_UINT16, BASE_HEX, VALS(cipsafety_ssn_date_vals), 0, NULL, HFILL }
+      { &hf_cip_ssupervisor_apply_tunid_tunid_snn_date,
+        { "TUNID SNN (Manual) Date", "cipsafety.ssupervisor.apply_tunid.tunid.snn.date",
+          FT_UINT16, BASE_HEX, VALS(cipsafety_snn_date_vals), 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_apply_tunid_tunid_ssn_time,
-        { "TUNID SSN  (Manual) Time", "cipsafety.ssupervisor.apply_tunid.tunid.ssn.time",
+      { &hf_cip_ssupervisor_apply_tunid_tunid_snn_time,
+        { "TUNID SNN (Manual) Time", "cipsafety.ssupervisor.apply_tunid.tunid.snn.time",
           FT_UINT32, BASE_HEX, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_ssupervisor_apply_tunid_tunid_macid,
@@ -2655,48 +2658,48 @@ proto_register_cipsafety(void)
         { "Configuration Lock", "cipsafety.ssupervisor.configuration_lock",
           FT_UINT8, BASE_DEC, VALS(cip_ssupervisor_lock_vals), 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_configuration_unid_ssn_timestamp,
-        { "Configuration UNID SSN Timestamp", "cipsafety.ssupervisor.configuration_unid.ssn.timestamp",
+      { &hf_cip_ssupervisor_configuration_unid_snn_timestamp,
+        { "Configuration UNID SNN Timestamp", "cipsafety.ssupervisor.configuration_unid.snn.timestamp",
           FT_ABSOLUTE_TIME, ABSOLUTE_TIME_UTC, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_configuration_unid_ssn_date,
-        { "Configuration UNID SSN  (Manual) Date", "cipsafety.ssupervisor.configuration_unid.ssn.date",
-          FT_UINT16, BASE_HEX, VALS(cipsafety_ssn_date_vals), 0, NULL, HFILL }
+      { &hf_cip_ssupervisor_configuration_unid_snn_date,
+        { "Configuration UNID SNN (Manual) Date", "cipsafety.ssupervisor.configuration_unid.snn.date",
+          FT_UINT16, BASE_HEX, VALS(cipsafety_snn_date_vals), 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_configuration_unid_ssn_time,
-        { "Configuration UNID SSN  (Manual) Time", "cipsafety.ssupervisor.configuration_unid.ssn.time",
+      { &hf_cip_ssupervisor_configuration_unid_snn_time,
+        { "Configuration UNID SNN (Manual) Time", "cipsafety.ssupervisor.configuration_unid.snn.time",
           FT_UINT32, BASE_HEX, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_ssupervisor_configuration_unid_macid,
         { "Configuration UNID MAC ID", "cipsafety.ssupervisor.configuration_unid.macid",
           FT_UINT32, BASE_HEX, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_safety_configuration_id_ssn_timestamp,
-        { "Safety Configuration ID SSN Timestamp", "cipsafety.ssupervisor.safety_configuration_id.ssn.timestamp",
+      { &hf_cip_ssupervisor_safety_configuration_id_snn_timestamp,
+        { "Safety Configuration ID SNN Timestamp", "cipsafety.ssupervisor.safety_configuration_id.snn.timestamp",
           FT_ABSOLUTE_TIME, ABSOLUTE_TIME_UTC, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_safety_configuration_id_ssn_date,
-        { "Safety Configuration ID SSN  (Manual) Date", "cipsafety.ssupervisor.safety_configuration_id.ssn.date",
-          FT_UINT16, BASE_HEX, VALS(cipsafety_ssn_date_vals), 0, NULL, HFILL }
+      { &hf_cip_ssupervisor_safety_configuration_id_snn_date,
+        { "Safety Configuration ID SNN (Manual) Date", "cipsafety.ssupervisor.safety_configuration_id.snn.date",
+          FT_UINT16, BASE_HEX, VALS(cipsafety_snn_date_vals), 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_safety_configuration_id_ssn_time,
-        { "Safety Configuration ID SSN  (Manual) Time", "cipsafety.ssupervisor.safety_configuration_id.ssn.time",
+      { &hf_cip_ssupervisor_safety_configuration_id_snn_time,
+        { "Safety Configuration ID SNN (Manual) Time", "cipsafety.ssupervisor.safety_configuration_id.snn.time",
           FT_UINT32, BASE_HEX, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_safety_configuration_id_macid,
-        { "Safety Configuration ID MAC ID", "cipsafety.ssupervisor.safety_configuration_id.macid",
-          FT_UINT32, BASE_HEX, NULL, 0, NULL, HFILL }
+      { &hf_cip_ssupervisor_safety_configuration_id_sccrc,
+        { "Safety Configuration ID SCCRC", "cipsafety.ssupervisor.safety_configuration_id.sccrc",
+         FT_UINT32, BASE_HEX, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_target_unid_ssn_timestamp,
-        { "Target UNID SSN Timestamp", "cipsafety.ssupervisor.target_unid.ssn.timestamp",
+      { &hf_cip_ssupervisor_target_unid_snn_timestamp,
+        { "Target UNID SNN Timestamp", "cipsafety.ssupervisor.target_unid.snn.timestamp",
           FT_ABSOLUTE_TIME, ABSOLUTE_TIME_UTC, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_target_unid_ssn_date,
-        { "Target UNID SSN  (Manual) Date", "cipsafety.ssupervisor.target_unid.ssn.date",
-          FT_UINT16, BASE_HEX, VALS(cipsafety_ssn_date_vals), 0, NULL, HFILL }
+      { &hf_cip_ssupervisor_target_unid_snn_date,
+        { "Target UNID SNN (Manual) Date", "cipsafety.ssupervisor.target_unid.snn.date",
+          FT_UINT16, BASE_HEX, VALS(cipsafety_snn_date_vals), 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_target_unid_ssn_time,
-        { "Target UNID SSN  (Manual) Time", "cipsafety.ssupervisor.target_unid.ssn.time",
+      { &hf_cip_ssupervisor_target_unid_snn_time,
+        { "Target UNID SNN (Manual) Time", "cipsafety.ssupervisor.target_unid.snn.time",
           FT_UINT32, BASE_HEX, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_ssupervisor_target_unid_macid,
@@ -2707,16 +2710,16 @@ proto_register_cipsafety(void)
         { "Number of Array Entries", "cipsafety.ssupervisor.cp_owners.num_entries",
           FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_output_cp_owners_ocpunid_ssn_timestamp,
-        { "OCPUNID SSN Timestamp", "cipsafety.ssupervisor.cp_owners.ssn.timestamp",
+      { &hf_cip_ssupervisor_output_cp_owners_ocpunid_snn_timestamp,
+        { "OCPUNID SNN Timestamp", "cipsafety.ssupervisor.cp_owners.snn.timestamp",
           FT_ABSOLUTE_TIME, ABSOLUTE_TIME_UTC, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_output_cp_owners_ocpunid_ssn_date,
-        { "OCPUNID SSN  (Manual) Date", "cipsafety.ssupervisor.cp_owners.ssn.date",
-          FT_UINT16, BASE_HEX, VALS(cipsafety_ssn_date_vals), 0, NULL, HFILL }
+      { &hf_cip_ssupervisor_output_cp_owners_ocpunid_snn_date,
+        { "OCPUNID SNN (Manual) Date", "cipsafety.ssupervisor.cp_owners.snn.date",
+          FT_UINT16, BASE_HEX, VALS(cipsafety_snn_date_vals), 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_output_cp_owners_ocpunid_ssn_time,
-        { "OCPUNID SSN  (Manual) Time", "cipsafety.ssupervisor.cp_owners.ssn.time",
+      { &hf_cip_ssupervisor_output_cp_owners_ocpunid_snn_time,
+        { "OCPUNID SNN (Manual) Time", "cipsafety.ssupervisor.cp_owners.snn.time",
           FT_UINT32, BASE_HEX, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_ssupervisor_output_cp_owners_ocpunid_macid,
@@ -2727,16 +2730,16 @@ proto_register_cipsafety(void)
         { "EPATH Size", "cipsafety.ssupervisor.cp_owners.epath_size",
           FT_UINT8, BASE_DEC, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_proposed_tunid_ssn_timestamp,
-        { "Proposed TUNID SSN Timestamp", "cipsafety.ssupervisor.proposed_tunid.ssn.timestamp",
+      { &hf_cip_ssupervisor_proposed_tunid_snn_timestamp,
+        { "Proposed TUNID SNN Timestamp", "cipsafety.ssupervisor.proposed_tunid.snn.timestamp",
           FT_ABSOLUTE_TIME, ABSOLUTE_TIME_UTC, NULL, 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_proposed_tunid_ssn_date,
-        { "Proposed TUNID SSN  (Manual) Date", "cipsafety.ssupervisor.proposed_tunid.ssn.date",
-          FT_UINT16, BASE_HEX, VALS(cipsafety_ssn_date_vals), 0, NULL, HFILL }
+      { &hf_cip_ssupervisor_proposed_tunid_snn_date,
+        { "Proposed TUNID SNN (Manual) Date", "cipsafety.ssupervisor.proposed_tunid.snn.date",
+          FT_UINT16, BASE_HEX, VALS(cipsafety_snn_date_vals), 0, NULL, HFILL }
       },
-      { &hf_cip_ssupervisor_proposed_tunid_ssn_time,
-        { "Proposed TUNID SSN  (Manual) Time", "cipsafety.ssupervisor.proposed_tunid.ssn.time",
+      { &hf_cip_ssupervisor_proposed_tunid_snn_time,
+        { "Proposed TUNID SNN (Manual) Time", "cipsafety.ssupervisor.proposed_tunid.snn.time",
           FT_UINT32, BASE_HEX, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_ssupervisor_proposed_tunid_macid,
@@ -2780,27 +2783,27 @@ proto_register_cipsafety(void)
           FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_svalidator_time_coord_msg_min_mult_size,
-        { "Time Coord Msg Min Multiplier Size", "cipsafety.svalidator.time_coord_msg_min_mult.size",
+        { "Time Coord Msg Min Multiplier Array Size", "cipsafety.svalidator.time_coord_msg_min_mult.size",
           FT_UINT8, BASE_DEC, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_svalidator_time_coord_msg_min_mult_item,
-        { "Time Coord Msg Min Multiplier Item", "cipsafety.svalidator.time_coord_msg_min_mult.item",
-          FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
+        { "Time Coord Msg Min Multiplier", "cipsafety.svalidator.time_coord_msg_min_mult.item",
+          FT_UINT16, BASE_DEC|BASE_UNIT_STRING, &units_safety_128us, 0, NULL, HFILL }
       },
       { &hf_cip_svalidator_network_time_multiplier_size,
-        { "Network Time Expectation Multiplier Size", "cipsafety.svalidator.network_time_multiplier.size",
+        { "Network Time Expectation Multiplier Array Size", "cipsafety.svalidator.network_time_multiplier.size",
           FT_UINT8, BASE_DEC, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_svalidator_network_time_multiplier_item,
-        { "Network Time Expectation Multiplier Item", "cipsafety.svalidator.network_time_multiplier.item",
-          FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
+        { "Network Time Expectation Multiplier", "cipsafety.svalidator.network_time_multiplier.item",
+          FT_UINT16, BASE_DEC|BASE_UNIT_STRING, &units_safety_128us, 0, NULL, HFILL }
       },
       { &hf_cip_svalidator_timeout_multiplier_size,
-        { "Timeout Multiplier Size", "cipsafety.svalidator.timeout_multiplier.size",
+        { "Timeout Multiplier Array Size", "cipsafety.svalidator.timeout_multiplier.size",
           FT_UINT8, BASE_DEC, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_svalidator_timeout_multiplier_item,
-        { "Timeout Multiplier Item", "cipsafety.svalidator.timeout_multiplier.item",
+        { "Timeout Multiplier", "cipsafety.svalidator.timeout_multiplier.item",
           FT_UINT8, BASE_DEC, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_svalidator_max_consumer_num,
@@ -2836,11 +2839,11 @@ proto_register_cipsafety(void)
           FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_svalidator_prod_cons_fault_count_size,
-        { "Producer/Consumer Counter Size", "cipsafety.svalidator.prod_cons_fault_count.size",
+        { "Producer/Consumer Counter Array Size", "cipsafety.svalidator.prod_cons_fault_count.size",
           FT_UINT8, BASE_DEC, NULL, 0, NULL, HFILL }
       },
       { &hf_cip_svalidator_prod_cons_fault_count_item,
-        { "Producer/Consumer Counter Item", "cipsafety.svalidator.prod_cons_fault_count.item",
+        { "Producer/Consumer Fault Counter", "cipsafety.svalidator.prod_cons_fault_count.item",
           FT_UINT8, BASE_DEC, NULL, 0, NULL, HFILL }
       }
    };
@@ -2858,31 +2861,29 @@ proto_register_cipsafety(void)
       &ett_ssupervisor_rrsc,
       &ett_ssupervisor_cmd_data,
       &ett_ssupervisor_propose_tunid,
-      &ett_ssupervisor_propose_tunid_ssn,
+      &ett_ssupervisor_propose_tunid_snn,
       &ett_ssupervisor_configure_request_tunid,
-      &ett_ssupervisor_configure_request_tunid_ssn,
+      &ett_ssupervisor_configure_request_tunid_snn,
       &ett_ssupervisor_configure_request_ounid,
-      &ett_ssupervisor_configure_request_ounid_ssn,
+      &ett_ssupervisor_configure_request_ounid_snn,
       &ett_ssupervisor_configure_lock_tunid,
-      &ett_ssupervisor_configure_lock_tunid_ssn,
+      &ett_ssupervisor_configure_lock_tunid_snn,
       &ett_ssupervisor_reset_tunid,
-      &ett_ssupervisor_reset_tunid_ssn,
+      &ett_ssupervisor_reset_tunid_snn,
       &ett_ssupervisor_apply_tunid,
-      &ett_ssupervisor_apply_tunid_ssn,
+      &ett_ssupervisor_apply_tunid_snn,
       &ett_exception_detail_common,
       &ett_exception_detail_device,
       &ett_exception_detail_manufacturer,
       &ett_ssupervisor_configuration_unid,
-      &ett_ssupervisor_configuration_unid_ssn,
-      &ett_ssupervisor_safety_configuration_id,
-      &ett_ssupervisor_safety_configuration_id_ssn,
+      &ett_ssupervisor_configuration_unid_snn,
       &ett_ssupervisor_target_unid,
-      &ett_ssupervisor_target_unid_ssn,
+      &ett_ssupervisor_target_unid_snn,
       &ett_ssupervisor_output_cp_owners,
       &ett_ssupervisor_output_cp_owners_ocpunid,
-      &ett_ssupervisor_output_cp_owners_ocpunid_ssn,
+      &ett_ssupervisor_output_cp_owners_ocpunid_snn,
       &ett_ssupervisor_proposed_tunid,
-      &ett_ssupervisor_proposed_tunid_ssn,
+      &ett_ssupervisor_proposed_tunid_snn,
       &ett_cip_ssupervisor_reset_attr_bitmap
    };
 
@@ -3027,10 +3028,10 @@ proto_reg_handoff_cipsafety(void)
    heur_dissector_add("cip.sc", dissect_class_svalidator_heur, "CIP Safety Validator", "s_validator_cip", proto_cip_class_s_validator, HEURISTIC_ENABLE);
 
    /* Register dissector for I/O data handling */
-   dissector_add_for_decode_as("enip.io", cipsafety_base_data_handle );
-   dissector_add_for_decode_as("enip.io", cipsafety_extended_data_handle );
-   dissector_add_for_decode_as("enip.io", cipsafety_base_time_coord_handle );
-   dissector_add_for_decode_as("enip.io", cipsafety_extended_time_coord_handle );
+   dissector_add_for_decode_as("cip.io", cipsafety_base_data_handle );
+   dissector_add_for_decode_as("cip.io", cipsafety_extended_data_handle );
+   dissector_add_for_decode_as("cip.io", cipsafety_base_time_coord_handle );
+   dissector_add_for_decode_as("cip.io", cipsafety_extended_time_coord_handle );
 
    proto_cip = proto_get_id_by_filter_name( "cip" );
    subdissector_class_table = find_dissector_table("cip.class.iface");
@@ -3038,7 +3039,7 @@ proto_reg_handoff_cipsafety(void)
 
 
 /*
-* Editor modelines - http://www.wireshark.org/tools/modelines.html
+* Editor modelines - https://www.wireshark.org/tools/modelines.html
 *
 * Local variables:
 * c-basic-offset: 3

@@ -51,12 +51,9 @@ composite_free(tvbuff_t *tvb)
 }
 
 static guint
-composite_offset(const tvbuff_t *tvb, const guint counter)
+composite_offset(const tvbuff_t *tvb _U_, const guint counter)
 {
-	const struct tvb_composite *composite_tvb = (const struct tvb_composite *) tvb;
-	const tvbuff_t *member = (const tvbuff_t *)composite_tvb->composite.tvbs->data;
-
-	return tvb_offset_from_real_beginning_counter(member, counter);
+	return counter;
 }
 
 static const guint8*
@@ -292,7 +289,7 @@ tvb_composite_finalize(tvbuff_t *tvb)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

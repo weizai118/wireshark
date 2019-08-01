@@ -2705,7 +2705,7 @@ dissect_snmp_SNMPv3Message(gboolean implicit_tag _U_, tvbuff_t *tvb _U_, int off
 			expert_field* expert;
 
 			authen_item = proto_tree_add_boolean(authen_tree, hf_snmp_msgAuthentication, tvb, 0, 0, usm_p.authOK);
-			PROTO_ITEM_SET_GENERATED(authen_item);
+			proto_item_set_generated(authen_item);
 
 			if (usm_p.authOK) {
 				expert = &ei_snmp_authentication_ok;
@@ -4014,7 +4014,7 @@ proto_reg_handoff_smux(void)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

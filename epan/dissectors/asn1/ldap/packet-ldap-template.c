@@ -90,9 +90,8 @@
 
 #include "packet-ldap.h"
 #include "packet-ntlmssp.h"
-#include "packet-ssl.h"
-#include "packet-ssl-utils.h"
-#include "packet-smb-common.h"
+#include "packet-tls.h"
+#include "packet-tls-utils.h"
 #include "packet-gssapi.h"
 
 #include "packet-ber.h"
@@ -154,8 +153,11 @@ static int hf_mscldap_domain_guid = -1;
 static int hf_mscldap_forest = -1;
 static int hf_mscldap_domain = -1;
 static int hf_mscldap_hostname = -1;
+static int hf_mscldap_nb_domain_z = -1;
 static int hf_mscldap_nb_domain = -1;
+static int hf_mscldap_nb_hostname_z = -1;
 static int hf_mscldap_nb_hostname = -1;
+static int hf_mscldap_username_z = -1;
 static int hf_mscldap_username = -1;
 static int hf_mscldap_sitename = -1;
 static int hf_mscldap_clientsitename = -1;
@@ -217,7 +219,7 @@ static dissector_handle_t gssapi_handle;
 static dissector_handle_t gssapi_wrap_handle;
 static dissector_handle_t ntlmssp_handle;
 static dissector_handle_t spnego_handle;
-static dissector_handle_t ssl_handle;
+static dissector_handle_t tls_handle;
 static dissector_handle_t ldap_handle ;
 
 static void prefs_register_ldap(void); /* forward declaration for use in preferences registration */
@@ -302,7 +304,7 @@ ldapstat_init(struct register_srt* srt _U_, GArray* srt_array)
   }
 }
 
-static int
+static tap_packet_status
 ldapstat_packet(void *pldap, packet_info *pinfo, epan_dissect_t *edt _U_, const void *psi)
 {
   guint i = 0;
@@ -312,11 +314,11 @@ ldapstat_packet(void *pldap, packet_info *pinfo, epan_dissect_t *edt _U_, const 
 
   /* we are only interested in reply packets */
   if(ldap->is_request){
-    return 0;
+    return TAP_PACKET_DONT_REDRAW;
   }
   /* if we havnt seen the request, just ignore it */
   if(!ldap->req_frame){
-    return 0;
+    return TAP_PACKET_DONT_REDRAW;
   }
 
   /* only use the commands we know how to handle */
@@ -331,13 +333,13 @@ ldapstat_packet(void *pldap, packet_info *pinfo, epan_dissect_t *edt _U_, const 
   case LDAP_REQ_EXTENDED:
     break;
   default:
-    return 0;
+    return TAP_PACKET_DONT_REDRAW;
   }
 
   ldap_srt_table = g_array_index(data->srt_array, srt_stat_table*, i);
 
   add_srt_table_data(ldap_srt_table, ldap->protocolOpTag, &ldap->req_time, pinfo);
-  return 1;
+  return TAP_PACKET_REDRAW;
 }
 
 /*
@@ -400,8 +402,8 @@ ldap_info_equal_unmatched(gconstpointer k1, gconstpointer k2)
 }
 
 
- /* These are the NtVer flags
-  http://msdn.microsoft.com/en-us/library/cc201035.aspx
+/* These are the NtVer flags from MS-ADTS section 6.3.1.1
+ * https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-adts
  */
 
 static const true_false_string tfs_ntver_v1 = {
@@ -594,7 +596,7 @@ attribute_types_reset_cb(void)
   deregister_attribute_types();
 }
 
-/* MS-ADTS specification, section 7.3.1.1, NETLOGON_NT_VERSION Options Bits */
+/* MS-ADTS specification, section 6.3.1.1, NETLOGON_NT_VERSION Options Bits */
 static int dissect_mscldap_ntver_flags(proto_tree *parent_tree, tvbuff_t *tvb, int offset)
 {
   static const int * flags[] = {
@@ -633,8 +635,7 @@ dissect_ldap_AssertionValue(gboolean implicit_tag, tvbuff_t *tvb, int offset, as
   gint8 ber_class;
   gboolean pc, ind, is_ascii;
   gint32 tag;
-  guint32 len, i;
-  const guchar *str;
+  guint32 len;
 
   if(!implicit_tag){
     offset=get_ber_identifier(tvb, offset, &ber_class, &pc, &tag);
@@ -711,25 +712,13 @@ dissect_ldap_AssertionValue(gboolean implicit_tag, tvbuff_t *tvb, int offset, as
    * -- I don't think there are full schemas available that describe the
    *  interesting cases i.e. AD -- ronnie
    */
-  str=tvb_get_ptr(tvb, offset, len);
-  is_ascii=TRUE;
-  for(i=0;i<len;i++){
-    if(!g_ascii_isprint(str[i])){
-      is_ascii=FALSE;
-      break;
-    }
-  }
+  is_ascii=tvb_ascii_isprint(tvb, offset, len);
 
   /* convert the string into a printable string */
   if(is_ascii){
-    ldapvalue_string=wmem_strndup(wmem_packet_scope(), str, len);
+    ldapvalue_string= tvb_get_string_enc(wmem_packet_scope(), tvb, offset, len, ENC_UTF_8|ENC_NA);
   } else {
-    ldapvalue_string=(char*)wmem_alloc(wmem_packet_scope(), 3*len);
-    for(i=0;i<len;i++){
-      g_snprintf(ldapvalue_string+i*3,3,"%02x",str[i]&0xff);
-      ldapvalue_string[3*i+2]=':';
-    }
-    ldapvalue_string[3*len-1]=0;
+    ldapvalue_string= tvb_bytes_to_str_punct(wmem_packet_scope(), tvb, offset, len, ':');
   }
 
   proto_tree_add_string(tree, hf_index, tvb, offset, len, ldapvalue_string);
@@ -901,14 +890,14 @@ ldap_match_call_response(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, gu
 
       if(lcrp->is_request){
         it=proto_tree_add_uint(tree, hf_ldap_response_in, tvb, 0, 0, lcrp->rep_frame);
-        PROTO_ITEM_SET_GENERATED(it);
+        proto_item_set_generated(it);
       } else {
         nstime_t ns;
         it=proto_tree_add_uint(tree, hf_ldap_response_to, tvb, 0, 0, lcrp->req_frame);
-        PROTO_ITEM_SET_GENERATED(it);
+        proto_item_set_generated(it);
         nstime_delta(&ns, &pinfo->abs_ts, &lcrp->req_time);
         it=proto_tree_add_time(tree, hf_ldap_time, tvb, 0, 0, &ns);
-        PROTO_ITEM_SET_GENERATED(it);
+        proto_item_set_generated(it);
       }
     }
 
@@ -1421,9 +1410,7 @@ static int dissect_NetLogon_PDU(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tre
   guint16 itype;
   guint16 len;
   guint32 version;
-  const char *fn;
   int fn_len;
-  guint16 bc;
   proto_item *item;
 
   ldm_tree = NULL;
@@ -1444,20 +1431,25 @@ static int dissect_NetLogon_PDU(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tre
   switch(itype){
 
     case LOGON_SAM_LOGON_RESPONSE:
-      bc = tvb_reported_length_remaining(tvb, offset);
-      /* logon server name */
-      fn = get_unicode_or_ascii_string(tvb,&offset,TRUE,&fn_len,FALSE,FALSE,&bc);
-      proto_tree_add_string(tree, hf_mscldap_nb_hostname, tvb,offset, fn_len, fn);
+      /* logon server name; must be aligned on a 2-byte boundary */
+      if ((offset & 1) != 0) {
+        offset++;
+      }
+      proto_tree_add_item_ret_length(tree, hf_mscldap_nb_hostname_z, tvb,offset, -1, ENC_UTF_16|ENC_LITTLE_ENDIAN, &fn_len);
       offset +=fn_len;
 
-      /* username */
-      fn = get_unicode_or_ascii_string(tvb,&offset,TRUE,&fn_len,FALSE,FALSE,&bc);
-      proto_tree_add_string(tree, hf_mscldap_username, tvb,offset, fn_len, fn);
+      /* username; must be aligned on a 2-byte boundary */
+      if ((offset & 1) != 0) {
+        offset++;
+      }
+      proto_tree_add_item_ret_length(tree, hf_mscldap_username_z, tvb,offset, -1, ENC_UTF_16|ENC_LITTLE_ENDIAN, &fn_len);
       offset +=fn_len;
 
-      /* domain name */
-      fn = get_unicode_or_ascii_string(tvb,&offset,TRUE,&fn_len,FALSE,FALSE,&bc);
-      proto_tree_add_string(tree, hf_mscldap_nb_domain, tvb,offset, fn_len, fn);
+      /* domain name; must be aligned on a 2-byte boundary */
+      if ((offset & 1) != 0) {
+        offset++;
+      }
+      proto_tree_add_item_ret_length(tree, hf_mscldap_nb_domain_z, tvb,offset, -1, ENC_UTF_16|ENC_LITTLE_ENDIAN, &fn_len);
       offset +=fn_len;
 
       /* get the version number from the end of the buffer, as the
@@ -1496,14 +1488,13 @@ static int dissect_NetLogon_PDU(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tre
         offset += 4;
 
         /* Flags */
-        offset = dissect_mscldap_netlogon_flags(tree, tvb, offset);
-
+        dissect_mscldap_netlogon_flags(tree, tvb, offset);
       }
 
       break;
 
     case LOGON_SAM_LOGON_RESPONSE_EX:
-      /* MS-ADTS 7.3.1.9 */
+      /* MS-ADTS 6.3.1.9 */
       offset += 2; /* Skip over "Sbz" field (MUST be set to 0) */
 
       /* Flags */
@@ -1578,7 +1569,7 @@ static int dissect_NetLogon_PDU(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tre
         old_offset = offset + 4;
         item = proto_tree_add_item(tree, hf_mscldap_netlogon_ipaddress, tvb, old_offset, 4, ENC_BIG_ENDIAN);
 
-        if (tree){
+        if (tree) {
           proto_tree *subtree;
 
           subtree = proto_item_add_subtree(item, ett_mscldap_ipdetails);
@@ -1593,23 +1584,18 @@ static int dissect_NetLogon_PDU(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tre
 
           /* get IP address */
           proto_tree_add_item(subtree, hf_mscldap_netlogon_ipaddress_ipv4, tvb, offset, 4, ENC_BIG_ENDIAN);
-          offset +=4;
-
-          /* skip the 8 bytes of zeros in the sockaddr structure */
-          offset += 8;
         }
-
       }
 
       break;
   }
 
 
- /* complete the decode with the version and token details */
+  /* complete the decode with the version and token details */
 
-  offset = len-8;
+  offset = len - 8;
 
-  /* NETLOGON_NT_VERISON Options (MS-ADTS 7.3.1.1) */
+  /* NETLOGON_NT_VERISON Options (MS-ADTS 6.3.1.1) */
   offset = dissect_mscldap_ntver_flags(tree, tvb, offset);
 
   /* LM Token */
@@ -1971,15 +1957,30 @@ void proto_register_ldap(void) {
         FT_STRING, BASE_NONE, NULL, 0x0,
         "DNS name of server", HFILL }},
 
+    { &hf_mscldap_nb_domain_z,
+      { "NetBIOS Domain", "mscldap.nb_domain",
+        FT_STRINGZ, BASE_NONE, NULL, 0x0,
+        "NetBIOS name of the NC", HFILL }},
+
     { &hf_mscldap_nb_domain,
       { "NetBIOS Domain", "mscldap.nb_domain",
         FT_STRING, BASE_NONE, NULL, 0x0,
         "NetBIOS name of the NC", HFILL }},
 
+    { &hf_mscldap_nb_hostname_z,
+      { "NetBIOS Hostname", "mscldap.nb_hostname",
+        FT_STRINGZ, BASE_NONE, NULL, 0x0,
+        "NetBIOS name of the server", HFILL }},
+
     { &hf_mscldap_nb_hostname,
       { "NetBIOS Hostname", "mscldap.nb_hostname",
         FT_STRING, BASE_NONE, NULL, 0x0,
         "NetBIOS name of the server", HFILL }},
+
+    { &hf_mscldap_username_z,
+      { "Username", "mscldap.username",
+        FT_STRINGZ, BASE_NONE, NULL, 0x0,
+        "User specified in client's request", HFILL }},
 
     { &hf_mscldap_username,
       { "Username", "mscldap.username",
@@ -2003,43 +2004,43 @@ void proto_register_ldap(void) {
 
     { &hf_mscldap_ntver_flags_v1,
       { "V1", "mscldap.ntver.searchflags.v1", FT_BOOLEAN, 32,
-        TFS(&tfs_ntver_v1), 0x00000001, "See section 7.3.1.1 of MS-ADTS specification", HFILL }},
+        TFS(&tfs_ntver_v1), 0x00000001, "See section 6.3.1.1 of MS-ADTS specification", HFILL }},
 
     { &hf_mscldap_ntver_flags_v5,
       { "V5", "mscldap.ntver.searchflags.v5", FT_BOOLEAN, 32,
-        TFS(&tfs_ntver_v5), 0x00000002, "See section 7.3.1.1 of MS-ADTS specification", HFILL }},
+        TFS(&tfs_ntver_v5), 0x00000002, "See section 6.3.1.1 of MS-ADTS specification", HFILL }},
 
     { &hf_mscldap_ntver_flags_v5ex,
       { "V5EX", "mscldap.ntver.searchflags.v5ex", FT_BOOLEAN, 32,
-        TFS(&tfs_ntver_v5ex), 0x00000004, "See section 7.3.1.1 of MS-ADTS specification", HFILL }},
+        TFS(&tfs_ntver_v5ex), 0x00000004, "See section 6.3.1.1 of MS-ADTS specification", HFILL }},
 
     { &hf_mscldap_ntver_flags_v5ep,
       { "V5EP", "mscldap.ntver.searchflags.v5ep", FT_BOOLEAN, 32,
-        TFS(&tfs_ntver_v5ep), 0x00000008, "See section 7.3.1.1 of MS-ADTS specification", HFILL }},
+        TFS(&tfs_ntver_v5ep), 0x00000008, "See section 6.3.1.1 of MS-ADTS specification", HFILL }},
 
     { &hf_mscldap_ntver_flags_vcs,
       { "VCS", "mscldap.ntver.searchflags.vcs", FT_BOOLEAN, 32,
-        TFS(&tfs_ntver_vcs), 0x00000010, "See section 7.3.1.1 of MS-ADTS specification", HFILL }},
+        TFS(&tfs_ntver_vcs), 0x00000010, "See section 6.3.1.1 of MS-ADTS specification", HFILL }},
 
     { &hf_mscldap_ntver_flags_vnt4,
       { "VNT4", "mscldap.ntver.searchflags.vnt4", FT_BOOLEAN, 32,
-        TFS(&tfs_ntver_vnt4), 0x01000000, "See section 7.3.1.1 of MS-ADTS specification", HFILL }},
+        TFS(&tfs_ntver_vnt4), 0x01000000, "See section 6.3.1.1 of MS-ADTS specification", HFILL }},
 
     { &hf_mscldap_ntver_flags_vpdc,
       { "VPDC", "mscldap.ntver.searchflags.vpdc", FT_BOOLEAN, 32,
-        TFS(&tfs_ntver_vpdc), 0x10000000, "See section 7.3.1.1 of MS-ADTS specification", HFILL }},
+        TFS(&tfs_ntver_vpdc), 0x10000000, "See section 6.3.1.1 of MS-ADTS specification", HFILL }},
 
     { &hf_mscldap_ntver_flags_vip,
       { "VIP", "mscldap.ntver.searchflags.vip", FT_BOOLEAN, 32,
-        TFS(&tfs_ntver_vip), 0x20000000, "See section 7.3.1.1 of MS-ADTS specification", HFILL }},
+        TFS(&tfs_ntver_vip), 0x20000000, "See section 6.3.1.1 of MS-ADTS specification", HFILL }},
 
     { &hf_mscldap_ntver_flags_vl,
       { "VL", "mscldap.ntver.searchflags.vl", FT_BOOLEAN, 32,
-        TFS(&tfs_ntver_vl), 0x40000000, "See section 7.3.1.1 of MS-ADTS specification", HFILL }},
+        TFS(&tfs_ntver_vl), 0x40000000, "See section 6.3.1.1 of MS-ADTS specification", HFILL }},
 
     { &hf_mscldap_ntver_flags_vgc,
       { "VGC", "mscldap.ntver.searchflags.vgc", FT_BOOLEAN, 32,
-        TFS(&tfs_ntver_vgc), 0x80000000, "See section 7.3.1.1 of MS-ADTS specification", HFILL }},
+        TFS(&tfs_ntver_vgc), 0x80000000, "See section 6.3.1.1 of MS-ADTS specification", HFILL }},
 
 
     { &hf_mscldap_netlogon_flags_pdc,
@@ -2205,9 +2206,10 @@ void proto_register_ldap(void) {
     " To use this option, you must also enable \"Allow subdissectors to reassemble TCP streams\" in the TCP protocol settings.",
     &ldap_desegment);
 
-  prefs_register_uint_preference(ldap_module, "ssl.port", "LDAPS TCP Port",
-                                 "Set the port for LDAP operations over SSL",
+  prefs_register_uint_preference(ldap_module, "tls.port", "LDAPS TCP Port",
+                                 "Set the port for LDAP operations over TLS",
                                  10, &global_ldaps_tcp_port);
+  prefs_register_obsolete_preference(ldap_module, "ssl.port");
   /* UAT */
   attributes_uat = uat_new("Custom LDAP AttributeValue types",
                            sizeof(attribute_type_t),
@@ -2260,7 +2262,7 @@ proto_reg_handoff_ldap(void)
 
   ntlmssp_handle = find_dissector_add_dependency("ntlmssp", proto_ldap);
 
-  ssl_handle = find_dissector_add_dependency("ssl", proto_ldap);
+  tls_handle = find_dissector_add_dependency("tls", proto_ldap);
 
   prefs_register_ldap();
 
@@ -2363,7 +2365,7 @@ prefs_register_ldap(void)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local Variables:
  * c-basic-offset: 2

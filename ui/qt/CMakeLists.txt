@@ -16,29 +16,34 @@ set(WIRESHARK_WIDGET_HEADERS
 	widgets/capture_filter_combo.h
 	widgets/capture_filter_edit.h
 	widgets/clickable_label.h
+	widgets/copy_from_profile_menu.h
 	widgets/display_filter_combo.h
 	widgets/display_filter_edit.h
 	widgets/dissector_tables_view.h
 	widgets/drag_drop_toolbar.h
 	widgets/drag_label.h
-	widgets/editor_color_dialog.h
 	widgets/editor_file_dialog.h
 	widgets/expert_info_view.h
 	widgets/export_objects_view.h
 	widgets/elided_label.h
 	widgets/field_filter_edit.h
+	widgets/filter_expression_toolbar.h
 	widgets/find_line_edit.h
 	widgets/follow_stream_text.h
 	widgets/interface_toolbar_lineedit.h
 	widgets/label_stack.h
 	widgets/overlay_scroll_bar.h
 	widgets/pref_module_view.h
+	widgets/packet_list_header.h
+	widgets/profile_tree_view.h
 	widgets/qcustomplot.h
 	widgets/range_syntax_lineedit.h
+	widgets/splash_overlay.h
 	widgets/stock_icon_tool_button.h
 	widgets/syntax_line_edit.h
 	widgets/tabnav_tree_view.h
 	widgets/wireshark_file_dialog.h
+	widgets/wireless_timeline.h
 )
 
 set(WIRESHARK_MANAGER_HEADERS
@@ -58,6 +63,7 @@ set(WIRESHARK_UTILS_HEADERS
 	utils/tango_colors.h
 	utils/variant_pointer.h
 	utils/wireshark_mime_data.h
+	utils/wireshark_zip_helper.h
 )
 
 set(WIRESHARK_MODEL_HEADERS
@@ -81,9 +87,11 @@ set(WIRESHARK_MODEL_HEADERS
 	models/packet_list_model.h
 	models/packet_list_record.h
 	models/path_chooser_delegate.h
+	models/credentials_model.h
 	models/percent_bar_delegate.h
 	models/pref_delegate.h
 	models/pref_models.h
+	models/profile_model.h
 	models/proto_tree_model.h
 	models/related_packet_delegate.h
 	models/sparkline_delegate.h
@@ -175,6 +183,7 @@ set(WIRESHARK_QT_HEADERS
 	packet_format_group_box.h
 	packet_list.h
 	packet_range_group_box.h
+	credentials_dialog.h
 	preference_editor_frame.h
 	preferences_dialog.h
 	print_dialog.h
@@ -187,6 +196,7 @@ set(WIRESHARK_QT_HEADERS
 	resolved_addresses_dialog.h
 	response_time_delay_dialog.h
 	rpc_service_response_time_dialog.h
+	rsa_keys_frame.h
 	rtp_analysis_dialog.h
 	rtp_audio_stream.h
 	rtp_player_dialog.h
@@ -202,7 +212,6 @@ set(WIRESHARK_QT_HEADERS
 	sequence_diagram.h
 	sequence_dialog.h
 	show_packet_bytes_dialog.h
-	splash_overlay.h
 	stats_tree_dialog.h
 	service_response_time_dialog.h
 	simple_statistics_dialog.h
@@ -216,7 +225,6 @@ set(WIRESHARK_QT_HEADERS
 	uat_frame.h
 	voip_calls_dialog.h
 	wireless_frame.h
-	wireless_timeline.h
 	wireshark_application.h
 	wireshark_dialog.h
 	wlan_statistics_dialog.h
@@ -237,28 +245,33 @@ set(WIRESHARK_WIDGET_SRCS
 	widgets/capture_filter_combo.cpp
 	widgets/capture_filter_edit.cpp
 	widgets/clickable_label.cpp
+	widgets/copy_from_profile_menu.cpp
 	widgets/display_filter_combo.cpp
 	widgets/display_filter_edit.cpp
 	widgets/dissector_tables_view.cpp
 	widgets/drag_drop_toolbar.cpp
 	widgets/drag_label.cpp
-	widgets/editor_color_dialog.cpp
 	widgets/editor_file_dialog.cpp
 	widgets/elided_label.cpp
 	widgets/expert_info_view.cpp
 	widgets/export_objects_view.cpp
 	widgets/field_filter_edit.cpp
+	widgets/filter_expression_toolbar.cpp
 	widgets/find_line_edit.cpp
 	widgets/follow_stream_text.cpp
 	widgets/interface_toolbar_lineedit.cpp
 	widgets/label_stack.cpp
 	widgets/overlay_scroll_bar.cpp
+	widgets/packet_list_header.cpp
 	widgets/pref_module_view.cpp
+	widgets/profile_tree_view.cpp
 	widgets/qcustomplot.cpp
 	widgets/range_syntax_lineedit.cpp
+	widgets/splash_overlay.cpp
 	widgets/stock_icon_tool_button.cpp
 	widgets/syntax_line_edit.cpp
 	widgets/tabnav_tree_view.cpp
+	widgets/wireless_timeline.cpp
 	widgets/wireshark_file_dialog.cpp
 )
 
@@ -276,6 +289,7 @@ set(WIRESHARK_UTILS_SRCS
 	utils/qt_ui_utils.cpp
 	utils/stock_icon.cpp
 	utils/wireshark_mime_data.cpp
+	utils/wireshark_zip_helper.cpp
 )
 
 set(WIRESHARK_MODEL_SRCS
@@ -298,11 +312,13 @@ set(WIRESHARK_MODEL_SRCS
 	models/numeric_value_chooser_delegate.cpp
 	models/packet_list_model.cpp
 	models/packet_list_record.cpp
+	models/credentials_model.cpp
 	models/path_chooser_delegate.cpp
 	models/percent_bar_delegate.cpp
 	models/pref_delegate.cpp
 	models/pref_models.cpp
-	models/proto_tree_model.cpp
+        models/profile_model.cpp
+        models/proto_tree_model.cpp
 	models/related_packet_delegate.cpp
 	models/sparkline_delegate.cpp
 	models/supported_protocols_model.cpp
@@ -373,6 +389,7 @@ set(WIRESHARK_QT_SRC
 	lte_rlc_statistics_dialog.cpp
 	main_status_bar.cpp
 	welcome_page.cpp
+	main.cpp
 	main_window.cpp
 	main_window_preferences_frame.cpp
 	main_window_layout.cpp
@@ -384,6 +401,7 @@ set(WIRESHARK_QT_SRC
 	packet_format_group_box.cpp
 	packet_list.cpp
 	packet_range_group_box.cpp
+	credentials_dialog.cpp
 	preference_editor_frame.cpp
 	preferences_dialog.cpp
 	print_dialog.cpp
@@ -396,6 +414,7 @@ set(WIRESHARK_QT_SRC
 	resolved_addresses_dialog.cpp
 	response_time_delay_dialog.cpp
 	rpc_service_response_time_dialog.cpp
+	rsa_keys_frame.cpp
 	rtp_analysis_dialog.cpp
 	rtp_audio_stream.cpp
 	rtp_player_dialog.cpp
@@ -414,7 +433,6 @@ set(WIRESHARK_QT_SRC
 	show_packet_bytes_dialog.cpp
 	simple_dialog.cpp
 	simple_statistics_dialog.cpp
-	splash_overlay.cpp
 	supported_protocols_dialog.cpp
 	tabnav_tree_widget.cpp
 	tap_parameter_dialog.cpp
@@ -425,7 +443,6 @@ set(WIRESHARK_QT_SRC
 	uat_frame.cpp
 	voip_calls_dialog.cpp
 	wireless_frame.cpp
-	wireless_timeline.cpp
 	wireshark_application.cpp
 	wireshark_dialog.cpp
 	${WIRESHARK_CUSTOM_QT_SRCS}
@@ -513,6 +530,7 @@ set(WIRESHARK_QT_UI
 	packet_dialog.ui
 	packet_format_group_box.ui
 	packet_range_group_box.ui
+	credentials_dialog.ui
 	preference_editor_frame.ui
 	preferences_dialog.ui
 	print_dialog.ui
@@ -520,6 +538,7 @@ set(WIRESHARK_QT_UI
 	progress_frame.ui
 	protocol_hierarchy_dialog.ui
 	resolved_addresses_dialog.ui
+	rsa_keys_frame.ui
 	rtp_analysis_dialog.ui
 	rtp_player_dialog.ui
 	rtp_stream_dialog.ui
@@ -532,7 +551,7 @@ set(WIRESHARK_QT_UI
 	search_frame.ui
 	sequence_dialog.ui
 	show_packet_bytes_dialog.ui
-	splash_overlay.ui
+	widgets/splash_overlay.ui
 	supported_protocols_dialog.ui
 	tap_parameter_dialog.ui
 	tcp_stream_dialog.ui
@@ -558,6 +577,9 @@ set(WIRESHARK_QT_TS
 	wireshark_it.ts
 	wireshark_ja_JP.ts
 	wireshark_pl.ts
+	wireshark_ru.ts
+	wireshark_sv.ts
+	wireshark_uk.ts
 	wireshark_zh_CN.ts
 )
 
@@ -585,6 +607,15 @@ include_directories(
 set(CMAKE_AUTOMOC TRUE)
 set(CMAKE_AUTOUIC TRUE)
 set(CMAKE_AUTORCC TRUE)
+
+if(NOT Qt5Widgets_VERSION VERSION_LESS "5.9")
+	# Drop the file modification time of source files from generated files
+	# to help with reproducible builds. We do not use QFileInfo.lastModified
+	# so this has no unwanted side effects. This mtime started appearing in
+	# Qt 5.8. The option to force the old file format without mtime was
+	# added in Qt 5.9. See https://bugreports.qt.io/browse/QTBUG-58769
+	set(CMAKE_AUTORCC_OPTIONS --format-version 1)
+endif()
 
 QT5_ADD_TRANSLATION(WIRESHARK_QT_QM ${WIRESHARK_QT_TS})
 
@@ -619,7 +650,7 @@ source_group("ui\\Models Source" FILES ${WIRESHARK_MODEL_SRCS})
 source_group("ui\\Manager Headers" FILES ${WIRESHARK_MANAGER_HEADERS})
 source_group("ui\\Manager Source" FILES ${WIRESHARK_MANAGER_SRCS})
 
-add_library(qtui STATIC
+add_library(qtui OBJECT
 	#Included so that Visual Studio can properly put header files in solution
 	${WIRESHARK_QT_HEADERS}
 	${WIRESHARK_WIDGET_HEADERS}
@@ -640,18 +671,32 @@ add_library(qtui STATIC
 	${WIRESHARK_QT_TAP_SRC}
 	wireshark-tap-register.c
 )
+
+target_include_directories(qtui SYSTEM
+	PUBLIC
+		${QT_INCLUDE_DIRS}
+		${WINSPARKLE_INCLUDE_DIRS}
+		${SPEEXDSP_INCLUDE_DIRS}
+	PRIVATE
+		# Can't use imported target, linking object libraries for usage requirements
+		# requires CMake 3.12
+		${PCAP_INCLUDE_DIRS}
+)
+
+target_compile_definitions(qtui
+	PUBLIC
+		${QT_COMPILE_DEFINITIONS}
+)
+
 set_target_properties(qtui PROPERTIES
 	LINK_FLAGS "${WS_LINK_FLAGS}"
 	FOLDER "UI"
 	# Ensure .qm files are generated before autogenerating i18n.qrc
 	AUTOGEN_TARGET_DEPENDS "${WIRESHARK_QT_QM}"
 )
-if(WIN32)
-	target_link_libraries(qtui "UxTheme.lib")
-endif()
 
 #
-# Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+# Editor modelines  -  https://www.wireshark.org/tools/modelines.html
 #
 # Local variables:
 # c-basic-offset: 8

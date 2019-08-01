@@ -17,6 +17,11 @@
 #include "randpkt_core/randpkt_core.h"
 #include <wsutil/strtoi.h>
 #include <wsutil/filesystem.h>
+#include <wsutil/privileges.h>
+#include <wsutil/socket.h>
+#include <wsutil/please_report_bug.h>
+
+#include <cli_main.h>
 
 #define RANDPKT_EXTCAP_INTERFACE "randpkt"
 #define RANDPKTDUMP_VERSION_MAJOR "0"
@@ -29,6 +34,7 @@ enum {
 	OPT_VERSION,
 	OPT_MAXBYTES,
 	OPT_COUNT,
+	OPT_DELAY,
 	OPT_RANDOM_TYPE,
 	OPT_ALL_RANDOM,
 	OPT_TYPE
@@ -40,6 +46,7 @@ static struct option longopts[] = {
 	{ "version",				no_argument,		NULL, OPT_VERSION},
 	{ "maxbytes",				required_argument,	NULL, OPT_MAXBYTES},
 	{ "count",					required_argument,	NULL, OPT_COUNT},
+	{ "delay",					required_argument,	NULL, OPT_DELAY},
 	{ "random-type",			no_argument,		NULL, OPT_RANDOM_TYPE},
 	{ "all-random",				no_argument,		NULL, OPT_ALL_RANDOM},
 	{ "type",					required_argument,	NULL, OPT_TYPE},
@@ -89,6 +96,9 @@ static int list_config(char *interface)
 	printf("arg {number=%u}{call=--count}{display=Number of packets}"
 		"{type=long}{default=1000}{tooltip=Number of packets to generate (-1 for infinite)}\n",
 		inc++);
+	printf("arg {number=%u}{call=--delay}{display=Packet delay (ms)}"
+		"{type=long}{default=0}{tooltip=Milliseconds to wait after writing each packet}\n",
+		inc++);
 	printf("arg {number=%u}{call=--random-type}{display=Random type}"
 		"{type=boolflag}{default=false}{tooltip=The packets type is randomly chosen}\n",
 		inc++);
@@ -116,10 +126,12 @@ static int list_config(char *interface)
 
 int main(int argc, char *argv[])
 {
+	char* err_msg;
 	int option_idx = 0;
 	int result;
 	guint16 maxbytes = 5000;
 	guint64 count = 1000;
+	guint64 packet_delay_ms = 0;
 	int random_type = FALSE;
 	int all_random = FALSE;
 	char* type = NULL;
@@ -128,13 +140,25 @@ int main(int argc, char *argv[])
 	wtap_dumper* savedump;
 	int ret = EXIT_FAILURE;
 
-#ifdef _WIN32
-	WSADATA wsaData;
-#endif  /* _WIN32 */
-
 	extcap_parameters * extcap_conf = g_new0(extcap_parameters, 1);
 	char* help_url;
 	char* help_header = NULL;
+
+	/*
+	 * Get credential information for later use.
+	 */
+	init_process_policies();
+
+	/*
+	 * Attempt to get the pathname of the directory containing the
+	 * executable file.
+	 */
+	err_msg = init_progfile_dir(argv[0]);
+	if (err_msg != NULL) {
+		g_warning("Can't get pathname of directory containing the captype program: %s.",
+			err_msg);
+		g_free(err_msg);
+	}
 
 	help_url = data_file_url("randpktdump.html");
 	extcap_base_set_util_info(extcap_conf, argv[0], RANDPKTDUMP_VERSION_MAJOR, RANDPKTDUMP_VERSION_MINOR,
@@ -156,6 +180,7 @@ int main(int argc, char *argv[])
 	extcap_help_add_option(extcap_conf, "--version", "print the version");
 	extcap_help_add_option(extcap_conf, "--maxbytes <bytes>", "max bytes per pack");
 	extcap_help_add_option(extcap_conf, "--count <num>", "number of packets to generate");
+	extcap_help_add_option(extcap_conf, "--delay <ms>", "milliseconds to wait after writing each packet");
 	extcap_help_add_option(extcap_conf, "--random-type", "one random type is chosen for all packets");
 	extcap_help_add_option(extcap_conf, "--all-random", "a random type is chosen for each packet");
 	extcap_help_add_option(extcap_conf, "--type <type>", "the packet type");
@@ -164,10 +189,6 @@ int main(int argc, char *argv[])
 		help(extcap_conf);
 		goto end;
 	}
-
-#ifdef _WIN32
-	attach_parent_console();
-#endif  /* _WIN32 */
 
 	while ((result = getopt_long(argc, argv, ":", longopts, &option_idx)) != -1) {
 		switch (result) {
@@ -192,6 +213,13 @@ int main(int argc, char *argv[])
 		case OPT_COUNT:
 			if (!ws_strtou64(optarg, NULL, &count)) {
 				g_warning("Invalid packet count: %s", optarg);
+				goto end;
+			}
+			break;
+
+		case OPT_DELAY:
+			if (!ws_strtou64(optarg, NULL, &packet_delay_ms)) {
+				g_warning("Invalid packet delay: %s", optarg);
 				goto end;
 			}
 			break;
@@ -248,13 +276,13 @@ int main(int argc, char *argv[])
 		type = NULL;
 	}
 
-#ifdef _WIN32
-	result = WSAStartup(MAKEWORD(1,1), &wsaData);
-	if (result != 0) {
-		g_warning("ERROR: WSAStartup failed with error: %d", result);
+	err_msg = ws_init_sockets();
+	if (err_msg != NULL) {
+		g_warning("ERROR: %s", err_msg);
+		g_free(err_msg);
+		g_warning("%s", please_report_bug());
 		goto end;
 	}
-#endif  /* _WIN32 */
 
 	if (extcap_conf->capture) {
 
@@ -275,7 +303,7 @@ int main(int argc, char *argv[])
 			g_debug("Generating packets: %s", example->abbrev);
 
 			randpkt_example_init(example, extcap_conf->fifo, maxbytes);
-			randpkt_loop(example, count);
+			randpkt_loop(example, count, packet_delay_ms);
 			randpkt_example_close(example);
 		} else {
 			produce_type = randpkt_parse_type(NULL);
@@ -285,7 +313,7 @@ int main(int argc, char *argv[])
 			randpkt_example_init(example, extcap_conf->fifo, maxbytes);
 
 			while (count-- > 0) {
-				randpkt_loop(example, 1);
+				randpkt_loop(example, 1, packet_delay_ms);
 				produce_type = randpkt_parse_type(NULL);
 
 				savedump = example->dump;
@@ -307,17 +335,6 @@ end:
 
 	return ret;
 }
-
-#ifdef _WIN32
-int _stdcall
-WinMain (struct HINSTANCE__ *hInstance,
-        struct HINSTANCE__ *hPrevInstance,
-        char               *lpszCmdLine,
-        int                 nCmdShow)
-{
-	return main(__argc, __argv);
-}
-#endif
 
 /*
  * Editor modelines  -  https://www.wireshark.org/tools/modelines.html

@@ -24,9 +24,6 @@
         <Component Id="cmpLibwireshark_dll" Guid="*">
           <File Id="filLibwireshark_dll" KeyPath="yes" Source="$(var.Staging.Dir)\libwireshark.dll" />
         </Component>
-        <Component Id="cmpLibwscodecs_dll" Guid="*">
-          <File Id="filLibwscodecs_dll" KeyPath="yes" Source="$(var.Staging.Dir)\libwscodecs.dll" />
-        </Component>
         <Component Id="cmpLibwsutil_dll" Guid="*">
           <File Id="filLibwsutil_dll" KeyPath="yes" Source="$(var.Staging.Dir)\libwsutil.dll" />
         </Component>
@@ -75,13 +72,15 @@
         <Component Id="cmpExtcap_html" Guid="*">
           <File Id="filExtcap_html" KeyPath="yes" Source="$(var.Staging.Dir)\extcap.html" />
         </Component>
+        <Component Id="cmpIpmap_html" Guid="*">
+          <File Id="filIpmap_html" KeyPath="yes" Source="$(var.Staging.Dir)\ipmap.html" />
+        </Component>
       </DirectoryRef>
     </Fragment>
     <Fragment>
       <ComponentGroup Id="CG.WiresharkRequired">
         <ComponentRef Id="cmpWiretap_dll" />
         <ComponentRef Id="cmpLibwireshark_dll" />
-        <ComponentRef Id="cmpLibwscodecs_dll" />
         <ComponentRef Id="cmpLibwsutil_dll" />
         <ComponentRef Id="cmpCOPYING_txt" />
         <ComponentRef Id="cmpNEWS_txt" />
@@ -98,6 +97,7 @@
         <ComponentRef Id="cmpDumpcap_exe" />
         <ComponentRef Id="cmpDumpcap_html" />
         <ComponentRef Id="cmpExtcap_html" />
+        <ComponentRef Id="cmpIpmap_html" />
       </ComponentGroup>
     </Fragment>
 
@@ -221,44 +221,6 @@
       </ComponentGroup>
     </Fragment>
 
-  <!-- Help files -->
-    <Fragment>
-      <DirectoryRef Id="dirHelp">
-        <Component Id="cmpHelp_toc" Guid="*">
-          <File Id="filHelp_toc" KeyPath="yes" Source="$(var.Help.Dir)\toc" />
-        </Component>
-        <Component Id="cmpHelp_overview_txt" Guid="*">
-          <File Id="filHelp_overview_txt" KeyPath="yes" Source="$(var.Help.Dir)\overview.txt" />
-        </Component>
-        <Component Id="cmpHelp_getting_started_txt" Guid="*">
-          <File Id="filHelp_getting_started_txt" KeyPath="yes" Source="$(var.Help.Dir)\getting_started.txt" />
-        </Component>
-        <Component Id="cmpHelp_capturing_txt" Guid="*">
-          <File Id="filHelp_capturing_txt" KeyPath="yes" Source="$(var.Help.Dir)\capturing.txt" />
-        </Component>
-        <Component Id="cmpHelp_capture_filters_txt" Guid="*">
-          <File Id="filHelp_capture_filters_txt" KeyPath="yes" Source="$(var.Help.Dir)\capture_filters.txt" />
-        </Component>
-        <Component Id="cmpHelp_display_filters_txt" Guid="*">
-          <File Id="filHelp_display_filters_txt" KeyPath="yes" Source="$(var.Help.Dir)\display_filters.txt" />
-        </Component>
-        <Component Id="cmpHelp_faq_txt" Guid="*">
-          <File Id="filHelp_faq_txt" KeyPath="yes" Source="$(var.Help.Dir)\faq.txt" />
-        </Component>
-      </DirectoryRef>
-    </Fragment>
-    <Fragment>
-      <ComponentGroup Id="CG.Help">
-        <ComponentRef Id="cmpHelp_toc" />
-        <ComponentRef Id="cmpHelp_overview_txt" />
-        <ComponentRef Id="cmpHelp_getting_started_txt" />
-        <ComponentRef Id="cmpHelp_capturing_txt" />
-        <ComponentRef Id="cmpHelp_capture_filters_txt" />
-        <ComponentRef Id="cmpHelp_display_filters_txt" />
-        <ComponentRef Id="cmpHelp_faq_txt" />
-      </ComponentGroup>
-    </Fragment>
-
   <!-- TShark -->
     <Fragment>
         <DirectoryRef Id="INSTALLFOLDER">
@@ -290,12 +252,18 @@
           <File Id="filClassic_colorfilters" KeyPath="yes" Source="$(var.Profiles.Dir)\Classic\colorfilters" />
         </Component>
       </Directory>
+      <Directory Id="dirNoReassembly" Name="No Reassembly">
+        <Component Id="cmpNoReassembly_preferences" Guid="*">
+          <File Id="filNoReassembly_preferences" KeyPath="yes" Source="$(var.Profiles.Dir)\No Reassembly\preferences" />
+        </Component>
+      </Directory>
     </DirectoryRef>
   </Fragment>
   <Fragment>
     <ComponentGroup Id="CG.Plugins.ConfigurationProfiles">
       <ComponentRef Id="cmpBluetooth_colorfilters" />
       <ComponentRef Id="cmpClassic_colorfilters" />
+      <ComponentRef Id="cmpNoReassembly_preferences" />
     </ComponentGroup>
   </Fragment>
 
@@ -359,11 +327,15 @@
       <Component Id="cmpReordercap_exe" Guid="*">
         <File Id="filReordercap_exe" KeyPath="yes" Source="$(var.Staging.Dir)\reordercap.exe" />
       </Component>
+      <Component Id="cmpReordercap_html" Guid="*">
+        <File Id="filReordercap_html" KeyPath="yes" Source="$(var.Staging.Dir)\reordercap.html" />
+      </Component>
     </DirectoryRef>
   </Fragment>
   <Fragment>
     <ComponentGroup Id="CG.Tools.Reordercap">
       <ComponentRef Id="cmpReordercap_exe" />
+      <ComponentRef Id="cmpReordercap_html" />
     </ComponentGroup>
   </Fragment>
 
@@ -373,11 +345,15 @@
       <Component Id="cmpDFTest_exe" Guid="*">
         <File Id="filDFTest_exe" KeyPath="yes" Source="$(var.Staging.Dir)\dftest.exe" />
       </Component>
+      <Component Id="cmpDFTest_html" Guid="*">
+        <File Id="filDFTest_html" KeyPath="yes" Source="$(var.Staging.Dir)\dftest.html" />
+      </Component>
     </DirectoryRef>
   </Fragment>
   <Fragment>
     <ComponentGroup Id="CG.Tools.DFTest">
       <ComponentRef Id="cmpDFTest_exe" />
+      <ComponentRef Id="cmpDFTest_html" />
     </ComponentGroup>
   </Fragment>
 
@@ -414,6 +390,24 @@
     <ComponentGroup Id="CG.Tools.Rawshark">
       <ComponentRef Id="cmpRawshark_exe" />
       <ComponentRef Id="cmpRawshark_html" />
+    </ComponentGroup>
+  </Fragment>
+
+  <!-- Randpkt -->
+  <Fragment>
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="cmpRandpkt_exe" Guid="*">
+        <File Id="filRandpkt_exe" KeyPath="yes" Source="$(var.Staging.Dir)\randpkt.exe" />
+      </Component>
+      <Component Id="cmpRandpkt_html" Guid="*">
+        <File Id="filRandpkt_html" KeyPath="yes" Source="$(var.Staging.Dir)\randpkt.html" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+  <Fragment>
+    <ComponentGroup Id="CG.Tools.Randpkt">
+      <ComponentRef Id="cmpRandpkt_exe" />
+      <ComponentRef Id="cmpRandpkt_html" />
     </ComponentGroup>
   </Fragment>
 
@@ -537,18 +531,27 @@
     </ComponentGroup>
   </Fragment>
 
-  <?ifdef USER_GUIDE_DIR?>
+  <?ifdef DOCBOOK_DIR?>
     <!-- User Guide -->
     <Fragment>
       <DirectoryRef Id="INSTALLFOLDER">
         <Component Id="cmpUserGuide_chm" Guid="*">
-          <File Id="filUserGuide_chm" KeyPath="yes" Source="$(var.USER_GUIDE_DIR)\user-guide.chm" />
+          <File Id="filUserGuide_chm" KeyPath="yes" Source="$(var.DOCBOOK_DIR)\user-guide.chm" />
+        </Component>
+      </DirectoryRef>
+    </Fragment>
+    <!-- FAQ -->
+    <Fragment>
+      <DirectoryRef Id="INSTALLFOLDER">
+        <Component Id="cmpFAQ_html" Guid="*">
+          <File Id="filFAQ_html" KeyPath="yes" Source="$(var.DOCBOOK_DIR)\faq.html" />
         </Component>
       </DirectoryRef>
     </Fragment>
     <Fragment>
-      <ComponentGroup Id="CG.UserGuide">
+      <ComponentGroup Id="CG.Documentation">
         <ComponentRef Id="cmpUserGuide_chm" />
+        <ComponentRef Id="cmpFAQ_html" />
       </ComponentGroup>
     </Fragment>
   <?endif?>

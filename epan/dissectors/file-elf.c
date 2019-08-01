@@ -1675,7 +1675,7 @@ dissect_elf(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
 
     /* Try to detect blackholes and overlapping segments */
     generated_tree = proto_tree_add_subtree(main_tree, tvb, 0, 0, ett_elf_info, &generated_item, "Infos");
-    PROTO_ITEM_SET_GENERATED(generated_item);
+    proto_item_set_generated(generated_item);
 
     blackhole_tree = proto_tree_add_subtree(generated_tree, tvb, 0, 0, ett_elf_black_holes, NULL, "Backholes");
     overlapping_tree = proto_tree_add_subtree(generated_tree, tvb, 0, 0, ett_elf_overlapping, NULL, "Overlapping");
@@ -2336,7 +2336,7 @@ proto_register_elf(void)
             NULL, HFILL }
         },
         { &hf_elf_symbol_table_shndx,
-            { "Releated Section Header Index",             "elf.symbol_table.shndx",
+            { "Related Section Header Index",             "elf.symbol_table.shndx",
             FT_UINT16, BASE_HEX | BASE_RANGE_STRING, RVALS(symbol_table_shndx_rvals), 0x00,
             NULL, HFILL }
         },
@@ -2495,7 +2495,7 @@ proto_reg_handoff_elf(void)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 4

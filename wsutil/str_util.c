@@ -101,7 +101,7 @@ isprint_utf8_string(const gchar *str, guint length)
 
 /* Check if an entire string is digits. */
 gboolean
-isdigit_string(guchar *str)
+isdigit_string(const guchar *str)
 {
 	guint pos;
 
@@ -210,7 +210,7 @@ printable_char_or_period(gchar c)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8

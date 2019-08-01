@@ -91,7 +91,15 @@ struct dissector_table {
 	gboolean	supports_decode_as;
 };
 
+/*
+ * Dissector tables. const char * -> dissector_table *
+ */
 static GHashTable *dissector_tables = NULL;
+
+/*
+ * Dissector table aliases. const char * -> const char *
+ */
+static GHashTable *dissector_table_aliases = NULL;
 
 /*
  * List of registered dissectors.
@@ -191,6 +199,9 @@ packet_init(void)
 	dissector_tables = g_hash_table_new_full(g_str_hash, g_str_equal,
 			NULL, destroy_dissector_table);
 
+	dissector_table_aliases = g_hash_table_new_full(g_str_hash, g_str_equal,
+			NULL, NULL);
+
 	registered_dissectors = g_hash_table_new_full(g_str_hash, g_str_equal,
 			NULL, NULL);
 
@@ -243,6 +254,7 @@ packet_cleanup(void)
 	g_slist_free(cleanup_routines);
 	g_slist_free(postseq_cleanup_routines);
 	g_hash_table_destroy(dissector_tables);
+	g_hash_table_destroy(dissector_table_aliases);
 	g_hash_table_destroy(registered_dissectors);
 	g_hash_table_destroy(depend_dissector_lists);
 	g_hash_table_destroy(heur_dissector_lists);
@@ -300,13 +312,14 @@ register_shutdown_routine(void (*func)(void))
 void
 init_dissection(void)
 {
-	wmem_enter_file_scope();
-
 	/*
-	 * Reinitialize resolution information. We do initialization here in
-	 * case we need to resolve between captures.
+	 * Reinitialize resolution information. Don't leak host entries from
+	 * one file to another (e.g. embarassing-host-name.example.com from
+	 * file1.pcapng into a name resolution block in file2.pcapng).
 	 */
-	host_name_lookup_init();
+	host_name_lookup_reset();
+
+	wmem_enter_file_scope();
 
 	/* Initialize the table of conversations. */
 	epan_conversation_init();
@@ -336,10 +349,11 @@ cleanup_dissection(void)
 	wmem_leave_file_scope();
 
 	/*
-	 * Reinitialize resolution information. We do initialization here in
-	 * case we need to resolve between captures.
+	 * Keep the name resolution info around until we start the next
+	 * dissection. Lua scripts may potentially do name resolution at
+	 * any time, even if we're not dissecting and have no capture
+	 * file open.
 	 */
-	host_name_lookup_cleanup();
 }
 
 void
@@ -506,7 +520,7 @@ dissect_record(epan_dissect_t *edt, int file_type_subtype,
 	edt->pi.cinfo = cinfo;
 	edt->pi.presence_flags = 0;
 	edt->pi.num = fd->num;
-	if (fd->flags.has_ts) {
+	if (fd->has_ts) {
 		edt->pi.presence_flags |= PINFO_HAS_TS;
 		edt->pi.abs_ts = fd->abs_ts;
 	}
@@ -546,9 +560,9 @@ dissect_record(epan_dissect_t *edt, int file_type_subtype,
 	frame_delta_abs_time(edt->session, fd, fd->frame_ref_num, &edt->pi.rel_ts);
 
 	/* pkt comment use first user, later from rec */
-	if (fd->flags.has_user_comment)
+	if (fd->has_user_comment)
 		frame_dissector_data.pkt_comment = epan_get_user_comment(edt->session, fd);
-	else if (fd->flags.has_phdr_comment)
+	else if (fd->has_phdr_comment)
 		frame_dissector_data.pkt_comment = rec->opt_comment;
 	else
 		frame_dissector_data.pkt_comment = NULL;
@@ -575,7 +589,7 @@ dissect_record(epan_dissect_t *edt, int file_type_subtype,
 	}
 	ENDTRY;
 
-	fd->flags.visited = 1;
+	fd->visited = 1;
 }
 
 /* Creates the top-most tvbuff and calls dissect_file() */
@@ -615,9 +629,9 @@ dissect_file(epan_dissect_t *edt, wtap_rec *rec,
 
 	TRY {
 		/* pkt comment use first user, later from rec */
-		if (fd->flags.has_user_comment)
+		if (fd->has_user_comment)
 			file_dissector_data.pkt_comment = epan_get_user_comment(edt->session, fd);
-		else if (fd->flags.has_phdr_comment)
+		else if (fd->has_phdr_comment)
 			file_dissector_data.pkt_comment = rec->opt_comment;
 		else
 			file_dissector_data.pkt_comment = NULL;
@@ -643,7 +657,7 @@ dissect_file(epan_dissect_t *edt, wtap_rec *rec,
 	}
 	ENDTRY;
 
-	fd->flags.visited = 1;
+	fd->visited = 1;
 }
 
 /*********************** code added for sub-dissector lookup *********************/
@@ -715,6 +729,13 @@ static int
 call_dissector_work_error(dissector_handle_t handle, tvbuff_t *tvb,
 			  packet_info *pinfo_arg, proto_tree *tree, void *);
 
+/*
+ * XXX packet_info.curr_layer_num is a guint8 and *_MAX_RECURSION_DEPTH is
+ * 100 elsewhere in the code. We should arguably use the same value here,
+ * but using that makes suite_wslua.case_wslua.test_wslua_dissector_fpm fail.
+ */
+#define PINFO_LAYER_MAX_RECURSION_DEPTH 500
+
 static int
 call_dissector_work(dissector_handle_t handle, tvbuff_t *tvb, packet_info *pinfo_arg,
 		    proto_tree *tree, gboolean add_proto_name, void *data)
@@ -737,6 +758,7 @@ call_dissector_work(dissector_handle_t handle, tvbuff_t *tvb, packet_info *pinfo
 	saved_proto = pinfo->current_proto;
 	saved_can_desegment = pinfo->can_desegment;
 	saved_layers_len = wmem_list_count(pinfo->layers);
+	DISSECTOR_ASSERT(saved_layers_len < PINFO_LAYER_MAX_RECURSION_DEPTH);
 
 	/*
 	 * can_desegment is set to 2 by anyone which offers the
@@ -784,7 +806,15 @@ call_dissector_work(dissector_handle_t handle, tvbuff_t *tvb, packet_info *pinfo
 		 * tree. Remove it.
 		 */
 		while (wmem_list_count(pinfo->layers) > saved_layers_len) {
-			pinfo->curr_layer_num--;
+			if (len == 0) {
+				/*
+				 * Only reduce the layer number if the dissector
+				 * rejected the data. Since tree can be NULL on
+				 * the first pass, we cannot check it or it will
+				 * break dissectors that rely on a stable value.
+				 */
+				pinfo->curr_layer_num--;
+			}
 			wmem_list_remove_frame(pinfo->layers, wmem_list_tail(pinfo->layers));
 		}
 	}
@@ -912,7 +942,17 @@ struct dtbl_entry {
 dissector_table_t
 find_dissector_table(const char *name)
 {
-	return (dissector_table_t)g_hash_table_lookup(dissector_tables, name);
+	dissector_table_t dissector_table = (dissector_table_t) g_hash_table_lookup(dissector_tables, name);
+	if (! dissector_table) {
+		const char *new_name = (const char *) g_hash_table_lookup(dissector_table_aliases, name);
+		if (new_name) {
+			dissector_table = (dissector_table_t) g_hash_table_lookup(dissector_tables, new_name);
+		}
+		if (dissector_table) {
+			g_warning("%s is now %s", name, new_name);
+		}
+	}
+	return dissector_table;
 }
 
 /* Find an entry in a uint dissector table. */
@@ -1723,8 +1763,15 @@ void dissector_add_custom_table_handle(const char *name, void *pattern, dissecto
 	dtbl_entry_t      *dtbl_entry;
 
 	/*
-	 * Make sure the dissector table exists.
+	 * Make sure the handle and the dissector table exist.
 	 */
+	if (handle == NULL) {
+		fprintf(stderr, "OOPS: handle to register \"%s\" to doesn't exist\n",
+		    name);
+		if (getenv("WIRESHARK_ABORT_ON_DISSECTOR_BUG") != NULL)
+			abort();
+		return;
+	}
 	if (sub_dissectors == NULL) {
 		fprintf(stderr, "OOPS: dissector table \"%s\" doesn't exist\n",
 		    name);
@@ -1872,7 +1919,7 @@ int dissector_try_guid(dissector_table_t sub_dissectors,
  * return the current dissector handle for that value.
  *
  * @param[in] sub_dissectors Dissector table to search.
- * @param[in] uint_val Value to match, e.g. the port number for the TCP dissector.
+ * @param[in] guid_val Value to match.
  * @return The matching dissector handle on success, NULL if no match is found.
  */
 dissector_handle_t dissector_get_guid_handle(
@@ -1916,6 +1963,15 @@ void dissector_change_payload(const char *name, dissector_handle_t handle)
 void dissector_reset_payload(const char *name)
 {
 	dissector_reset_uint(name, 0);
+}
+
+/* Given a payload dissector table (type FT_NONE), return the handle of
+   the dissector that is currently active, i.e. that was selected via
+   Decode As. */
+dissector_handle_t
+dissector_get_payload_handle(dissector_table_t const dissector_table)
+{
+	return dissector_get_uint_handle(dissector_table, 0);
 }
 
 dissector_handle_t
@@ -2466,12 +2522,39 @@ dissector_table_t register_custom_dissector_table(const char *name,
 }
 
 void
+register_dissector_table_alias(dissector_table_t dissector_table, const char *alias_name) {
+	if (!dissector_table || !alias_name) return;
+
+	const char *name = NULL;
+	GList *list = g_hash_table_get_keys(dissector_tables);
+	for (GList *cur = list; cur; cur = cur->next) {
+		if (g_hash_table_lookup(dissector_tables, cur->data) == dissector_table) {
+			name = (const char *) cur->data;
+			break;
+		}
+	}
+	g_list_free(list);
+	if (!name) return;
+
+	g_hash_table_insert(dissector_table_aliases, (gpointer) alias_name, (gpointer) name);
+}
+
+void
 deregister_dissector_table(const char *name)
 {
-	dissector_table_t sub_dissectors = find_dissector_table(name);
+	dissector_table_t sub_dissectors = (dissector_table_t) g_hash_table_lookup(dissector_tables, name);
 	if (!sub_dissectors) return;
 
 	g_hash_table_remove(dissector_tables, name);
+
+	GList *list = g_hash_table_get_keys(dissector_table_aliases);
+	for (GList *cur = list; cur; cur = cur->next) {
+		gpointer alias_name = cur->data;
+		if (g_hash_table_lookup(dissector_table_aliases, alias_name) == name) {
+			g_hash_table_remove(dissector_table_aliases, alias_name);
+		}
+	}
+	g_list_free(list);
 }
 
 const char *
@@ -2665,6 +2748,8 @@ dissector_try_heuristic(heur_dissector_list_t sub_dissectors, tvbuff_t *tvb,
 	saved_layers_len = wmem_list_count(pinfo->layers);
 	*heur_dtbl_entry = NULL;
 
+	DISSECTOR_ASSERT(saved_layers_len < PINFO_LAYER_MAX_RECURSION_DEPTH);
+
 	for (entry = sub_dissectors->dissectors; entry != NULL;
 	    entry = g_slist_next(entry)) {
 		/* XXX - why set this now and above? */
@@ -2705,7 +2790,15 @@ dissector_try_heuristic(heur_dissector_list_t sub_dissectors, tvbuff_t *tvb,
 			 * items to the tree so remove it from the list.
 			 */
 			while (wmem_list_count(pinfo->layers) > saved_layers_len) {
-				pinfo->curr_layer_num--;
+				if (len == 0) {
+					/*
+					 * Only reduce the layer number if the dissector
+					 * rejected the data. Since tree can be NULL on
+					 * the first pass, we cannot check it or it will
+					 * break dissectors that rely on a stable value.
+					 */
+					pinfo->curr_layer_num--;
+				}
 				wmem_list_remove_frame(pinfo->layers, wmem_list_tail(pinfo->layers));
 			}
 		}
@@ -3086,7 +3179,7 @@ call_dissector_only(dissector_handle_t handle, tvbuff_t *tvb,
 {
 	int ret;
 
-	g_assert(handle != NULL);
+	DISSECTOR_ASSERT(handle != NULL);
 	ret = call_dissector_work(handle, tvb, pinfo, tree, TRUE, data);
 	return ret;
 }
@@ -3106,7 +3199,7 @@ call_dissector_with_data(dissector_handle_t handle, tvbuff_t *tvb,
 		 * The protocol was disabled, or the dissector rejected
 		 * it.  Just dissect this packet as data.
 		 */
-		g_assert(data_handle->protocol != NULL);
+		DISSECTOR_ASSERT(data_handle->protocol != NULL);
 		call_dissector_work(data_handle, tvb, pinfo, tree, TRUE, NULL);
 		return tvb_captured_length(tvb);
 	}
@@ -3137,7 +3230,7 @@ void call_heur_dissector_direct(heur_dtbl_entry_t *heur_dtbl_entry, tvbuff_t *tv
 	guint16            saved_can_desegment;
 	guint              saved_layers_len = 0;
 
-	g_assert(heur_dtbl_entry);
+	DISSECTOR_ASSERT(heur_dtbl_entry);
 
 	/* can_desegment is set to 2 by anyone which offers this api/service.
 	   then everytime a subdissector is called it is decremented by one.
@@ -3159,7 +3252,7 @@ void call_heur_dissector_direct(heur_dtbl_entry_t *heur_dtbl_entry, tvbuff_t *tv
 
 	if (!heur_dtbl_entry->enabled ||
 		(heur_dtbl_entry->protocol != NULL && !proto_is_protocol_enabled(heur_dtbl_entry->protocol))) {
-		g_assert(data_handle->protocol != NULL);
+		DISSECTOR_ASSERT(data_handle->protocol != NULL);
 		call_dissector_work(data_handle, tvb, pinfo, tree, TRUE, NULL);
 		return;
 	}
@@ -3500,7 +3593,7 @@ prime_epan_dissect_with_postdissector_wanted_hfids(epan_dissect_t *edt)
 }
 
 /*
- * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
  * Local variables:
  * c-basic-offset: 8
